@@ -12,9 +12,10 @@ import_bom.py - BOM智造师 配套逆向导入脚本
 
 输出 JSON 结构（与 generate_bom.py 的 --data 输入一致）:
 {
+  "product_name": "芒果果味糖浆",
   "version": "V1.0",
   "date": "2026-07-07",
-  "materials": [{"name","unit","usage"(float),"yield_rate"(float)}],
+  "materials": [{"name","unit","usage"(float),"yield_rate"(float),"erp_code"}],
   "processes": [{"step_no","name","desc","work_hours"(float 或 ''),"note"}]
 }
 """
@@ -127,6 +128,10 @@ def parse_bom(path):
     version = _extract_after_colon(version_text) or "V1.0"
     date = _extract_after_colon(date_text) or ""
 
+    # 产品名称：扫描包含关键字的单元格并提取冒号后内容；取不到则默认空字符串。
+    product_name_text = _find_cell_value_with_substring(ws, "产品名称")
+    product_name = _extract_after_colon(product_name_text) or ""
+
     # 定位区标记行。
     material_row = _find_marker_row(ws, "一、物料信息")
     if material_row is None:
@@ -154,6 +159,7 @@ def parse_bom(path):
                 "unit": _str_or_empty(ws.cell(r, 2).value),
                 "usage": _to_float(ws.cell(r, 3).value),
                 "yield_rate": _to_float(ws.cell(r, 4).value),
+                "erp_code": _str_or_empty(ws.cell(r, 5).value),
             }
         )
         r += 1
@@ -180,6 +186,7 @@ def parse_bom(path):
         r += 1
 
     return {
+        "product_name": product_name,
         "version": version,
         "date": date,
         "materials": materials,

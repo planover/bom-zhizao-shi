@@ -107,6 +107,7 @@ def build_workbook(data):
 
     version = data.get("version") or "V1.0"
     date = data.get("date") or ""
+    product_name = str(data.get("product_name") or "").strip()
 
     # 标题
     ws.merge_cells("A1:E1")
@@ -124,11 +125,18 @@ def build_workbook(data):
     ws.merge_cells("A2:C2")
     ws.merge_cells("D2:E2")
 
-    r = 4
+    # 产品名称（仅当 product_name 非空时插入此行；为空时布局与旧版一致）
+    r = 3
+    if product_name:
+        ws.merge_cells(f"A{r}:E{r}")
+        c = ws.cell(r, 1, f"产品名称：{product_name}")
+        c.font = label_font
+        r += 1
+    r += 1  # 空行间隔
     # 一、物料信息
     ws.cell(r, 1, "一、物料信息").font = label_font
     r += 1
-    for col, h in enumerate(["物料名称", "计量单位", "用量", "出品率(%)", ""], 1):
+    for col, h in enumerate(["物料名称", "计量单位", "用量", "出品率(%)", "ERP物料代码"], 1):
         cell = ws.cell(r, col, h)
         cell.font = head_font
         cell.fill = head_fill
@@ -137,12 +145,12 @@ def build_workbook(data):
     r += 1
     for m in data.get("materials", []):
         for col, val in enumerate(
-            [m.get("name", ""), m.get("unit", ""), m.get("usage", ""), m.get("yield_rate", ""), ""], 1
+            [m.get("name", ""), m.get("unit", ""), m.get("usage", ""), m.get("yield_rate", ""), m.get("erp_code", "")], 1
         ):
             cell = ws.cell(r, col, val)
             cell.font = cell_font
             cell.border = border
-            cell.alignment = left if col in (1, 2) else center
+            cell.alignment = left if col in (1, 2, 5) else center
             if col == 4:
                 cell.number_format = '0.0"%"'
         r += 1
