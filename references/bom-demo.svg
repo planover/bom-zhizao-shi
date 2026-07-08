@@ -1,0 +1,258 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="720" viewBox="0 0 820 720" font-family="Microsoft YaHei, sans-serif">
+  <rect x="0" y="0" width="820" height="720" fill="#FFFFFF"/>
+
+  <!-- 标题行 -->
+  <rect x="25" y="20" width="770" height="36" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <text x="410" y="44" text-anchor="middle" font-size="16" font-weight="bold" fill="#1F3864">BOM表</text>
+
+  <!-- 行2 版本号 / 生成日期 -->
+  <rect x="25" y="56" width="320" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <rect x="345" y="56" width="450" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <text x="33" y="73" font-size="10" font-weight="bold" fill="#333333">版本号：V1.0</text>
+  <text x="353" y="73" font-size="10" font-weight="bold" fill="#333333">生成日期：2026-07-07</text>
+
+  <!-- 行3 产品名称 -->
+  <rect x="25" y="82" width="770" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <text x="33" y="99" font-size="10" font-weight="bold" fill="#333333">产品名称：芒果果味糖浆</text>
+
+  <!-- 行4 产品类别 / 全产品出品率 -->
+  <rect x="25" y="108" width="320" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <rect x="345" y="108" width="450" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <text x="33" y="125" font-size="10" font-weight="bold" fill="#333333">产品类别：食品</text>
+  <text x="353" y="125" font-size="10" font-weight="bold" fill="#333333">全产品出品率：130.0%</text>
+
+  <!-- 行6 一、物料信息 -->
+  <rect x="25" y="146" width="770" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <text x="33" y="163" font-size="10" font-weight="bold" fill="#333333">一、物料信息</text>
+
+  <!-- 物料表头 -->
+  <g>
+    <rect x="25" y="172" width="165" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="190" y="172" width="75" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="265" y="172" width="80" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="345" y="172" width="95" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="440" y="172" width="140" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="580" y="172" width="115" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="695" y="172" width="100" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <text x="107.5" y="189" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">物料名称</text>
+    <text x="227.5" y="189" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">单位</text>
+    <text x="305" y="189" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">用量</text>
+    <text x="392.5" y="189" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">出品率(%)</text>
+    <text x="510" y="189" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">ERP物料代码</text>
+    <text x="637.5" y="189" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">物料类型</text>
+    <text x="745" y="189" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">所属工序</text>
+  </g>
+
+  <!-- 分组 S01 -->
+  <rect x="25" y="198" width="770" height="26" fill="#EAF1FB" stroke="#BFBFBF"/>
+  <text x="33" y="215" font-size="10" font-weight="bold" fill="#333333">【工序 S01 调配】</text>
+
+  <!-- 物料数据 S01 -->
+  <g font-size="10" fill="#333333">
+    <rect x="25" y="224" width="165" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="190" y="224" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="265" y="224" width="80" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="345" y="224" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="440" y="224" width="140" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="580" y="224" width="115" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="695" y="224" width="100" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="33" y="241">芒果原浆</text>
+    <text x="198" y="241">kg</text>
+    <text x="305" y="241" text-anchor="middle">46.3</text>
+    <text x="392.5" y="241" text-anchor="middle">55.0%</text>
+    <text x="448" y="241">RM-001</text>
+    <text x="588" y="241">原料</text>
+    <text x="703" y="241">S01</text>
+
+    <rect x="25" y="250" width="165" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="190" y="250" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="265" y="250" width="80" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="345" y="250" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="440" y="250" width="140" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="580" y="250" width="115" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="695" y="250" width="100" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="33" y="267">白砂糖</text>
+    <text x="198" y="267">kg</text>
+    <text x="305" y="267" text-anchor="middle">30.0</text>
+    <text x="392.5" y="267" text-anchor="middle">100.0%</text>
+    <text x="448" y="267">RM-002</text>
+    <text x="588" y="267">原料</text>
+    <text x="703" y="267">S01</text>
+  </g>
+
+  <!-- 分组 S02 -->
+  <rect x="25" y="276" width="770" height="26" fill="#EAF1FB" stroke="#BFBFBF"/>
+  <text x="33" y="293" font-size="10" font-weight="bold" fill="#333333">【工序 S02 灌装】</text>
+
+  <g font-size="10" fill="#333333">
+    <rect x="25" y="302" width="165" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="190" y="302" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="265" y="302" width="80" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="345" y="302" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="440" y="302" width="140" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="580" y="302" width="115" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="695" y="302" width="100" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="33" y="319">芒果果味糖浆基料</text>
+    <text x="198" y="319">kg</text>
+    <text x="305" y="319" text-anchor="middle">70.0</text>
+    <text x="392.5" y="319" text-anchor="middle">98.0%</text>
+    <text x="448" y="319">RM-100</text>
+    <text x="588" y="319">原料</text>
+    <text x="703" y="319">S02</text>
+
+    <rect x="25" y="328" width="165" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="190" y="328" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="265" y="328" width="80" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="345" y="328" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="440" y="328" width="140" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="580" y="328" width="115" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="695" y="328" width="100" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="33" y="345">柠檬酸</text>
+    <text x="198" y="345">kg</text>
+    <text x="305" y="345" text-anchor="middle">0.5</text>
+    <text x="392.5" y="345" text-anchor="middle">100.0%</text>
+    <text x="448" y="345">RM-003</text>
+    <text x="588" y="345">添加剂</text>
+    <text x="703" y="345">S02</text>
+  </g>
+
+  <!-- 未归属工序 -->
+  <rect x="25" y="354" width="770" height="26" fill="#EAF1FB" stroke="#BFBFBF"/>
+  <text x="33" y="371" font-size="10" font-weight="bold" fill="#333333">【未归属工序】</text>
+
+  <g font-size="10" fill="#333333">
+    <rect x="25" y="380" width="165" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="190" y="380" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="265" y="380" width="80" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="345" y="380" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="440" y="380" width="140" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="580" y="380" width="115" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="695" y="380" width="100" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="33" y="397">PE 瓶</text>
+    <text x="198" y="397">个</text>
+    <text x="305" y="397" text-anchor="middle">100</text>
+    <text x="392.5" y="397" text-anchor="middle">100.0%</text>
+    <text x="448" y="397">PK-001</text>
+    <text x="588" y="397">包材</text>
+    <text x="703" y="397"></text>
+  </g>
+
+  <!-- 二、工艺工序 -->
+  <rect x="25" y="418" width="770" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <text x="33" y="435" font-size="10" font-weight="bold" fill="#333333">二、工艺工序</text>
+
+  <!-- 工序表头 -->
+  <g>
+    <rect x="25" y="444" width="165" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="190" y="444" width="75" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="265" y="444" width="80" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="345" y="444" width="95" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="440" y="444" width="140" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="580" y="444" width="215" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <text x="107.5" y="461" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">工序编号</text>
+    <text x="227.5" y="461" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">工序名称</text>
+    <text x="305" y="461" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">工序说明</text>
+    <text x="392.5" y="461" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">工时</text>
+    <text x="510" y="461" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">备注</text>
+    <text x="687.5" y="461" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">产物</text>
+  </g>
+
+  <!-- 工序数据 -->
+  <g font-size="10" fill="#333333">
+    <rect x="25" y="470" width="165" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="190" y="470" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="265" y="470" width="80" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="345" y="470" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="440" y="470" width="140" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="580" y="470" width="215" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="107.5" y="487" text-anchor="middle">S01</text>
+    <text x="227.5" y="487" text-anchor="middle">调配</text>
+    <text x="305" y="487" text-anchor="middle">混合搅拌</text>
+    <text x="392.5" y="487" text-anchor="middle">30</text>
+    <text x="510" y="487" text-anchor="middle">常温</text>
+    <text x="687.5" y="487" text-anchor="middle">芒果果味糖浆基料</text>
+
+    <rect x="25" y="496" width="165" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="190" y="496" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="265" y="496" width="80" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="345" y="496" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="440" y="496" width="140" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="580" y="496" width="215" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="107.5" y="513" text-anchor="middle">S02</text>
+    <text x="227.5" y="513" text-anchor="middle">灌装</text>
+    <text x="305" y="513" text-anchor="middle">无菌灌装</text>
+    <text x="392.5" y="513" text-anchor="middle">20</text>
+    <text x="510" y="513" text-anchor="middle"></text>
+    <text x="687.5" y="513" text-anchor="middle">芒果果味糖浆</text>
+  </g>
+
+  <!-- 三、配料表 -->
+  <rect x="25" y="534" width="770" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <text x="33" y="551" font-size="10" font-weight="bold" fill="#333333">三、配料表</text>
+
+  <!-- 配料表头 -->
+  <g>
+    <rect x="25" y="560" width="165" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="190" y="560" width="75" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="265" y="560" width="80" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="345" y="560" width="95" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="440" y="560" width="140" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="580" y="560" width="215" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <text x="107.5" y="577" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">物料名称</text>
+    <text x="227.5" y="577" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">物料类型</text>
+    <text x="305" y="577" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">计量单位</text>
+    <text x="392.5" y="577" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">用量</text>
+    <text x="510" y="577" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F3864">出品率(%)</text>
+  </g>
+
+  <!-- 配料数据（按用量降序：70.0 / 46.3 / 30.0 / 0.5） -->
+  <g font-size="10" fill="#333333">
+    <rect x="25" y="586" width="165" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="190" y="586" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="265" y="586" width="80" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="345" y="586" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="440" y="586" width="140" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="580" y="586" width="215" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="33" y="603">芒果果味糖浆基料</text>
+    <text x="198" y="603">原料</text>
+    <text x="273" y="603">kg</text>
+    <text x="392.5" y="603" text-anchor="middle">70.0</text>
+    <text x="510" y="603" text-anchor="middle">98.0%</text>
+
+    <rect x="25" y="612" width="165" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="190" y="612" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="265" y="612" width="80" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="345" y="612" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="440" y="612" width="140" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="580" y="612" width="215" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="33" y="629">芒果原浆</text>
+    <text x="198" y="629">原料</text>
+    <text x="273" y="629">kg</text>
+    <text x="392.5" y="629" text-anchor="middle">46.3</text>
+    <text x="510" y="629" text-anchor="middle">55.0%</text>
+
+    <rect x="25" y="638" width="165" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="190" y="638" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="265" y="638" width="80" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="345" y="638" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="440" y="638" width="140" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="580" y="638" width="215" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="33" y="655">白砂糖</text>
+    <text x="198" y="655">原料</text>
+    <text x="273" y="655">kg</text>
+    <text x="392.5" y="655" text-anchor="middle">30.0</text>
+    <text x="510" y="655" text-anchor="middle">100.0%</text>
+
+    <rect x="25" y="664" width="165" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="190" y="664" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="265" y="664" width="80" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="345" y="664" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="440" y="664" width="140" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="580" y="664" width="215" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="33" y="681">柠檬酸</text>
+    <text x="198" y="681">添加剂</text>
+    <text x="273" y="681">kg</text>
+    <text x="392.5" y="681" text-anchor="middle">0.5</text>
+    <text x="510" y="681" text-anchor="middle">100.0%</text>
+  </g>
+</svg>
