@@ -129,11 +129,12 @@ def test_t01():
     wb = load_workbook(out)
     ws = wb.active
 
-    # 7 列存在
-    headers = [str(ws.cell(7, c).value or "").strip() for c in range(1, 8)]
-    assert headers == ["物料名称", "单位", "用量", "出品率(%)", "ERP物料代码",
-                       "物料类型", "所属工序"], "T01 物料表头7列不符: %s" % headers
-    assert ws.max_column >= 7, "T01 max_column 应>=7, 实际=%s" % ws.max_column
+    # V3 物料区为 8 列 A–H（含首列「序号」）
+    headers = [str(ws.cell(7, c).value or "").strip() for c in range(1, 9)]
+    assert headers == ["序号", "物料名称", "单位", "用量", "出品率(%)",
+                       "ERP物料代码", "物料类型", "所属工序"], \
+        "T01 物料表头8列不符(V3): %s" % headers
+    assert ws.max_column >= 8, "T01 max_column 应>=8(V3), 实际=%s" % ws.max_column
 
     # 行4：产品类别 + 全产品出品率
     row4 = " | ".join(str(ws.cell(4, c).value or "") for c in range(1, 8))

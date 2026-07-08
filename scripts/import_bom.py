@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """
-import_bom.py - BOM智造师 配套逆向导入脚本（V2）
+import_bom.py - BOM智造师 配套逆向导入脚本（V3 / V2.1）
 
 读取由 generate_bom.py 生成的 BOM 表 Excel (.xlsx)，反向解析为与正向
 输入 JSON Schema 完全一致的结构化数据，便于「重新编辑已有 BOM」或闭环回写。
 
-V2 增强：
-- 改为「按列头文本映射列号」（不再硬编码 A–E），对旧版 5 列 Excel 天然兼容
-- 解析新增字段：category / output_rate / material_type / process / output
-- 跳过物料区的「【分组】」子标题行
-- 不解析、不回写「三、配料表」区块（派生数据，重新生成时按 category 重新派生）
-- 缺列时取默认值（material_type=其他, process=空, output=空, category=其他, output_rate=空）
+V3（V2.1）增强（相对 V2）：
+- 改为「按列头文本映射列号」（不硬编码 A–E），对旧版 5/7 列 Excel 天然兼容。
+- 解析新增字段：category / output_rate / material_type / process / output /
+  approver / effective_date / standard（BOM 级可选）/ materials[].allergen（物料级）。
+- 物料名称改取 _map_header 映射列（**非 A 列**，因 V3 首列为序号）。
+- 忽略「序号」「用量占比%」列；跳过物料区「合计用量」行（首列含「合计」）。
+- 「三、配料表」仅回收「过敏原」列（按物料名称匹配回写 material.allergen），
+  其余派生列不读、不重建配料表实体。
+- 缺列时取默认值（material_type=其他, process=空, output=空, category=其他,
+  output_rate=空, approver/effective_date/standard=空, allergen=空）。
 
 依赖 openpyxl；若运行环境缺失则自动安装（复用 ensure_openpyxl 逻辑）。
 
@@ -21,8 +25,9 @@ V2 增强：
 {
   "product_name": "...", "category": "...", "output_rate": 130.0,
   "version": "V1.0", "date": "2026-07-07",
+  "approver": "张三", "effective_date": "2026-07-10", "standard": "GB 7718-2025",
   "materials": [{"name","unit","usage"(float),"yield_rate"(float),
-                 "erp_code","material_type","process"}],
+                 "erp_code","material_type","process","allergen"}],
   "processes": [{"step_no","name","desc","work_hours"(float 或 ''),"note","output"}]
 }
 """
@@ -69,6 +74,34 @@ def _extract_after_colon(text):
     return None
 
 
+# 行5 表头区可能拼接的多个字段 key（用于从合并单格中按 key 截取对应值）
+_META_KEYS = ("审批人", "生效日期", "执行标准")
+
+
+def _extract_meta_field(text, key):
+    """从可能合并了多个「key：value」段的单元格文本中提取指定 key 的值。
+
+    适用于 V3 行5 单格合并（审批人 / 生效日期 / 执行标准 拼接）场景；
+    旧版无此单元格则返回空串。值取到下一个已知 key 冒号前或文本末尾。
+    """
+    if not text:
+        return ""
+    for sep in ("：", ":"):
+        marker = key + sep
+        idx = text.find(marker)
+        if idx == -1:
+            continue
+        value = text[idx + len(marker):]
+        cut = len(value)
+        for nk in _META_KEYS:
+            for nsep in ("：", ":"):
+                nidx = value.find(nk + nsep)
+                if nidx != -1 and nidx < cut:
+                    cut = nidx
+        return value[:cut].strip()
+    return ""
+
+
 def _to_float(value):
     """尽量转为 float；None 或空串返回空字符串，无法解析则保留原值。"""
     if value is None:
@@ -88,7 +121,7 @@ def _str_or_empty(value):
     return str(value).strip()
 
 
-def _row_is_blank(ws, row_index, max_col=7):
+def _row_is_blank(ws, row_index, max_col=8):
     """判断一行（A–max_col）是否完全为空。"""
     for col in range(1, max_col + 1):
         if ws.cell(row_index, col).value not in (None, ""):
@@ -105,7 +138,7 @@ def _find_marker_row(ws, marker):
     return None
 
 
-def _map_header(ws, header_row, max_col=7):
+def _map_header(ws, header_row, max_col=8):
     """读取表头行，返回 {表头文本(去空格): 列号(1-based)} 映射。"""
     mapping = {}
     for col in range(1, max_col + 1):
@@ -156,11 +189,17 @@ def parse_bom(path):
     product_name_text = _find_cell_value_with_substring(ws, "产品名称")
     category_text = _find_cell_value_with_substring(ws, "产品类别")
     output_rate_text = _find_cell_value_with_substring(ws, "全产品出品率")
+    approver_text = _find_cell_value_with_substring(ws, "审批人")
+    effective_date_text = _find_cell_value_with_substring(ws, "生效日期")
+    standard_text = _find_cell_value_with_substring(ws, "执行标准")
 
     version = _extract_after_colon(version_text) or "V1.0"
     date = _extract_after_colon(date_text) or ""
     product_name = _extract_after_colon(product_name_text) or ""
     category = _extract_after_colon(category_text) or "其他"
+    approver = _extract_meta_field(approver_text, "审批人")
+    effective_date = _extract_meta_field(effective_date_text, "生效日期")
+    standard = _extract_meta_field(standard_text, "执行标准")
 
     raw_rate = _extract_after_colon(output_rate_text)
     if raw_rate is not None:
@@ -186,6 +225,7 @@ def parse_bom(path):
     # 物料区表头行（标记行 +1），建立列头 → 列号映射。
     material_header_row = material_row + 1
     mat_map = _map_header(ws, material_header_row)
+    # V3 首列为「序号」，物料名称在映射列（旧版为 A 列，映射同样命中）。
     mat_name_col = mat_map.get("物料名称")
     mat_unit_col = _col_of(mat_map, ["单位", "计量单位"])
     mat_usage_col = mat_map.get("用量")
@@ -193,13 +233,14 @@ def parse_bom(path):
     mat_erp_col = mat_map.get("ERP物料代码")
     mat_type_col = mat_map.get("物料类型")
     mat_proc_col = mat_map.get("所属工序")
+    # 「序号」「用量占比%」等为派生/展示列，逆向忽略，不映射。
 
     # 物料数据行：从表头行下一行起，到工序标记行止；
-    # 首列以「【」开头的分组子标题行跳过；完全空行跳过。
+    # 首列以「【」开头的分组子标题行跳过；首列含「合计」的合计行跳过；完全空行跳过。
     materials = []
     r = material_header_row + 1
     while r < process_row:
-        col1 = ws.cell(r, 1).value
+        col1 = ws.cell(r, 1).value  # V3=序号列 / 旧版=物料名称列
         if col1 is None or str(col1).strip() == "":
             if _row_is_blank(ws, r):
                 r += 1
@@ -208,9 +249,14 @@ def parse_bom(path):
         if str(col1).strip().startswith("【"):
             r += 1
             continue
+        if "合计" in str(col1):  # 合计用量汇总行（V3），逆向跳过
+            r += 1
+            continue
+        # 物料名称取映射列（非 A 列），缺映射则空
+        name = _str_or_empty(ws.cell(r, mat_name_col).value) if mat_name_col else ""
         materials.append(
             {
-                "name": str(col1).strip(),
+                "name": name,
                 "unit": _str_or_empty(ws.cell(r, mat_unit_col).value)
                 if mat_unit_col
                 else "",
@@ -229,6 +275,7 @@ def parse_bom(path):
                 "process": _str_or_empty(ws.cell(r, mat_proc_col).value)
                 if mat_proc_col
                 else "",
+                "allergen": "",  # 先置空，待配料表区块回收
             }
         )
         r += 1
@@ -244,7 +291,7 @@ def parse_bom(path):
     proc_out_col = proc_map.get("产物")
 
     # 工序数据行：从表头行下一行起，到「三、配料表」标记或空编号止；
-    # 定位三、配料表标记，若存在则作为停止边界（不解析、不回写）。
+    # 定位三、配料表标记，若存在则作为停止边界（不解析、不回写正文）。
     ingredient_row = _find_marker_row(ws, "三、配料表")
 
     processes = []
@@ -280,12 +327,36 @@ def parse_bom(path):
         )
         r += 1
 
+    # 三、配料表 过敏原回收（V3 新增，仅食品；按物料名称匹配回写 material.allergen）
+    # 不重建配料表实体、不读用量/占比%。
+    if ingredient_row is not None:
+        ing_map = _map_header(ws, ingredient_row + 1)
+        name_c = ing_map.get("物料名称")
+        alg_c = ing_map.get("过敏原")
+        if name_c and alg_c:
+            rr = ingredient_row + 2
+            while rr <= ws.max_row:
+                nm = _str_or_empty(ws.cell(rr, name_c).value)
+                if not nm:
+                    break
+                if str(ws.cell(rr, 1).value or "").strip().startswith("【"):
+                    break
+                alg = _str_or_empty(ws.cell(rr, alg_c).value)
+                for m in materials:
+                    if str(m.get("name") or "").strip() == nm:
+                        m["allergen"] = alg
+                        break
+                rr += 1
+
     return {
         "product_name": product_name,
         "category": category,
         "output_rate": output_rate,
         "version": version,
         "date": date,
+        "approver": approver,
+        "effective_date": effective_date,
+        "standard": standard,
         "materials": materials,
         "processes": processes,
     }

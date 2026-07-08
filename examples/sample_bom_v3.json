@@ -1,0 +1,76 @@
+{
+  "product_name": "芒果果味糖浆",
+  "category": "食品",
+  "output_rate": 130,
+  "version": "V1.0",
+  "date": "2026-07-07",
+  "approver": "张三",
+  "effective_date": "2026-07-10",
+  "standard": "GB 7718-2025",
+  "materials": [
+    {
+      "name": "芒果原浆",
+      "unit": "kg",
+      "usage": 46.3,
+      "yield_rate": 55,
+      "erp_code": "RM-001",
+      "material_type": "原料",
+      "process": "S01",
+      "allergen": "大豆,乳"
+    },
+    {
+      "name": "白砂糖",
+      "unit": "kg",
+      "usage": 30.0,
+      "yield_rate": 100,
+      "erp_code": "RM-002",
+      "material_type": "原料",
+      "process": "S01"
+    },
+    {
+      "name": "芒果果味糖浆基料",
+      "unit": "kg",
+      "usage": 70.0,
+      "yield_rate": 98,
+      "erp_code": "RM-100",
+      "material_type": "原料",
+      "process": "S02"
+    },
+    {
+      "name": "柠檬酸",
+      "unit": "kg",
+      "usage": 0.5,
+      "yield_rate": 100,
+      "erp_code": "RM-003",
+      "material_type": "添加剂",
+      "process": "S02"
+    },
+    {
+      "name": "PE 瓶",
+      "unit": "个",
+      "usage": 100,
+      "yield_rate": 100,
+      "erp_code": "PK-001",
+      "material_type": "包材",
+      "process": ""
+    }
+  ],
+  "processes": [
+    {
+      "step_no": "S01",
+      "name": "调配",
+      "desc": "混合搅拌",
+      "work_hours": 30,
+      "note": "常温",
+      "output": "芒果果味糖浆基料"
+    },
+    {
+      "step_no": "S02",
+      "name": "灌装",
+      "desc": "无菌灌装",
+      "work_hours": 20,
+      "note": "",
+      "output": "芒果果味糖浆"
+    }
+  ]
+}
