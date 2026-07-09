@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
 """
-generate_bom.py - BOM智造师 配套脚本（V3 / V2.1）
+generate_bom.py - BOM智造师 配套脚本（V4 / V3 / V2.1）
 
 读取包含产品信息、物料与工艺工序信息的 JSON，生成格式化的 BOM 表 Excel (.xlsx)。
 依赖 openpyxl；若运行环境缺失则自动安装。
 
-V3（V2.1）新增能力（相对 V2）：
-- Excel 物料区由 7 列扩展为 **8 列（A–H）**：首列新增「序号」（按输入顺序全局连续、跨工序分组不重置，纯展示不进 JSON）。
-- BOM 级可选字段 `approver` / `effective_date` / `standard`：Excel 行 5 单格合并 A5:H5，拼接非空字段（审批人 / 生效日期 / 执行标准），三者皆空则整行留空。
-- 物料区末新增「合计用量」行：A 列写「合计」，D 列写全部物料 usage 求和（含包材/其他），纯展示、逆向跳过。
-- 食品类「三、配料表」新增「用量占比%」（最大余数法保证列和恰为 100.0%）与「过敏原」两列（仅食品展示，按物料名取 `allergen`）。
-- 新增 `ingredient_pct()`（占比% 计算）与 `check_allergen_soft()`（W1 标签合法性 + H1 名称关键词启发式软告警，均非阻断）。
-- 分组子标题美化（浅蓝底 + 左侧加粗色条 + 加粗）。
-- 全产品出品率仍显示 `130.0%`（1 位小数，沿用 V2 修正）。
+V4 新增能力（相对 V3）：
+- BOM 级可选字段 `industry`（8 值枚举，选填，默认按 `category` 推断）。
+- 行业专属派生视图：电子→「三、元件清单」（8 列），化工→「三、配方表」（8 列）。
+- 物料级专属字段：电子 designator/footprint/part_number/rohs；化工 cas_number/concentration/ghs_hazard。
+- 配料表触发条件从 `category == "食品"` 改为 `industry == "食品"`（含推断，行为不变）。
+- 软校验：V8（industry 枚举）、W2（RoHS 未标）、W3（CAS/GHS 未填）、含量(%) 列和校验。
+- 共享常量迁入 `bom_constants.py`（EDIBLE / ALLERGEN_SET / ALLERGEN_HINTS / V4 新常量）。
+
+V3（V2.1）能力（沿用）：
+- Excel 物料区 8 列（A–H）：首列「序号」全局连续、跨工序分组不重置。
+- BOM 级可选字段 `approver` / `effective_date` / `standard`（行 5 单格合并）。
+- 物料区末「合计用量」行。
+- 食品类「三、配料表」含「用量占比%」（列和恰为 100.0%）与「过敏原」两列。
+- `ingredient_pct()` + `check_allergen_soft()`（W1/H1 软告警，非阻断）。
+- 全产品出品率显示 `130.0%`。
 
 用法:
     python3 generate_bom.py --data bom.json --out BOM_2026-07-07.xlsx
@@ -25,56 +32,19 @@ import json
 import sys
 import subprocess
 
+from bom_constants import (
+    INDUSTRIES,
+    CATEGORY_TO_INDUSTRY,
+    COMPONENT_EXCLUDE,
+    FORMULA_EXCLUDE,
+    EDIBLE,
+    ALLERGEN_SET,
+    ALLERGEN_HINTS,
+)
+
 
 # 产品类别枚举（R1 / R4）
 CATEGORIES = {"食品", "工业品", "日化化妆品", "医药", "其他"}
-# 可食用物料类型（R4 配料表过滤）
-EDIBLE = {"原料", "添加剂", "香精香料"}
-# 过敏原八大类 + 其他（GB 7718-2025），用于 W1 软校验
-ALLERGEN_SET = {
-    "含麸质谷物",
-    "甲壳类",
-    "蛋类",
-    "鱼类",
-    "花生",
-    "大豆",
-    "乳",
-    "坚果",
-    "其他",
-}
-
-# 过敏原关键词启发式（H1 软告警，非阻断）：(名称子串, 对应八大类)
-# 用于在「名称疑似含致敏物但 allergen 未标注」时给出提示性 WARNING。
-ALLERGEN_HINTS = [
-    ("牛奶", "乳"),
-    ("奶", "乳"),
-    ("奶酪", "乳"),
-    ("黄油", "乳"),
-    ("蛋黄", "蛋类"),
-    ("蛋清", "蛋类"),
-    ("蛋白", "蛋类"),
-    ("蛋", "蛋类"),
-    ("花生", "花生"),
-    ("大豆", "大豆"),
-    ("黄豆", "大豆"),
-    ("豆浆", "大豆"),
-    ("豆腐", "大豆"),
-    ("麸质", "含麸质谷物"),
-    ("面筋", "含麸质谷物"),
-    ("小麦", "含麸质谷物"),
-    ("面粉", "含麸质谷物"),
-    ("坚果", "坚果"),
-    ("杏仁", "坚果"),
-    ("腰果", "坚果"),
-    ("核桃", "坚果"),
-    ("花生酱", "花生"),
-    ("虾", "甲壳类"),
-    ("蟹", "甲壳类"),
-    ("龙虾", "甲壳类"),
-    ("鱼", "鱼类"),
-    ("三文鱼", "鱼类"),
-    ("鳕鱼", "鱼类"),
-]
 
 
 def ensure_openpyxl():
@@ -93,6 +63,37 @@ def load_data(path):
         return json.load(f)
 
 
+def infer_industry(data):
+    """推断 industry：显式 > category 推断。返回 (industry, warnings)。
+
+    - industry 已显式设置且合法 → 使用该值，warnings=[]
+    - industry 已显式设置但非法 → V8 WARNING，回退为推断值
+    - industry 未设置 → 按 category 推断（食品→食品，日化/医药→化工，其他→通用）
+
+    Args:
+        data: BOM JSON dict。
+
+    Returns:
+        (industry_str, warnings_list)
+    """
+    industry = str(data.get("industry") or "").strip()
+    category = str(data.get("category") or "其他").strip()
+
+    if industry:
+        if industry in INDUSTRIES:
+            return industry, []
+        # V8: 非法值 WARNING（非阻断），回退推断
+        warning = (
+            "WARNING: industry 值『%s』不在枚举内"
+            "（食品/电子/化工/机械/纺织/家具/包装/通用），已回退为推断值"
+            % industry
+        )
+        return CATEGORY_TO_INDUSTRY.get(category, "通用"), [warning]
+
+    # 未填 → 按 category 推断
+    return CATEGORY_TO_INDUSTRY.get(category, "通用"), []
+
+
 def validate(data):
     """返回错误列表；为空表示校验通过。
 
@@ -105,8 +106,9 @@ def validate(data):
     - V6(沿用): 工序编号唯一 / 名称非空 / 工时≥0
     - V7(沿用): 物料 name/unit 非空、usage>0
 
-    说明：V3 新增的 `approver`/`effective_date`/`standard`/`allergen` 均为可选字符串，
-    不纳入阻断级校验；仅 `allergen` 由 check_allergen_soft() 做非阻断软告警。
+    说明：V3 的 `approver`/`effective_date`/`standard`/`allergen` 与 V4 的
+    `industry`/专属物料字段均为可选，不纳入阻断级校验。
+    V8（industry 枚举软校验）由 infer_industry() 返回，非阻断。
     """
     errors = []
     if not isinstance(data, dict):
@@ -210,14 +212,18 @@ def validate(data):
     return errors
 
 
-def derive_ingredients(data):
-    """派生配料表（仅食品类）。
+def derive_ingredients(data, industry=None):
+    """派生配料表（仅食品行业）。
 
     返回 (ingredients, excluded)：
-    - ingredients: 可食用物料（material_type ∈ EDIBLE），若 category != 食品 则为空列表
+    - ingredients: 可食用物料（material_type ∈ EDIBLE），若 industry != 食品 则为空列表
     - excluded: 非食用物料（包材/其他/未分类/未填），始终保留用于 WARNING 统计
 
     ingredients 按 usage 降序排列（食品标签惯例）。
+
+    V4 变更：触发条件从 category=="食品" 改为 industry=="食品"（含推断）。
+    核心逻辑（过滤 EDIBLE / 排序 / 返回 excluded）完全不变。
+    industry=None 时内部调用 infer_industry 推断（向后兼容旧调用）。
     """
     ingredients, excluded = [], []
     for m in data.get("materials", []):
@@ -227,7 +233,9 @@ def derive_ingredients(data):
         else:
             excluded.append(m)
 
-    if str(data.get("category") or "其他") != "食品":
+    if industry is None:
+        industry, _ = infer_industry(data)
+    if industry != "食品":
         return [], excluded
 
     ingredients.sort(key=lambda x: float(x.get("usage") or 0), reverse=True)
@@ -304,6 +312,107 @@ def check_allergen_soft(data):
     return warnings
 
 
+def derive_components(data):
+    """派生元件清单（仅电子行业）。
+
+    返回 (components, excluded)：
+    - components: 电子元件物料（排除 material_type ∈ COMPONENT_EXCLUDE，即"其他"类）
+    - excluded: 被排除的物料（散热片/外壳/包装等）
+
+    排序：按物料类型分组 → 同类型内按位号(designator)字母数字排序。
+    空位号排同类型末尾（排序键用 "\\uffff" 哨兵）。
+    """
+    components, excluded = [], []
+    for m in data.get("materials", []):
+        mt = str(m.get("material_type") or "其他").strip() or "其他"
+        if mt in COMPONENT_EXCLUDE:
+            excluded.append(m)
+        else:
+            components.append(m)
+
+    # 排序：物料类型（升序）→ 位号（字母数字升序，空排末尾）
+    components.sort(key=lambda x: (
+        str(x.get("material_type") or ""),
+        str(x.get("designator") or "\uffff"),
+    ))
+    return components, excluded
+
+
+def derive_formula(data):
+    """派生配方表（仅化工行业）。
+
+    返回 (formula, excluded)：
+    - formula: 配方原料（排除 material_type ∈ FORMULA_EXCLUDE，即"包材"类）
+    - excluded: 被排除的物料（瓶子/标签等包材）
+
+    排序：按含量(%) 降序（配方表惯例，主成分在前）。含量为空的排末尾。
+    """
+    formula, excluded = [], []
+    for m in data.get("materials", []):
+        mt = str(m.get("material_type") or "其他").strip() or "其他"
+        if mt in FORMULA_EXCLUDE:
+            excluded.append(m)
+        else:
+            formula.append(m)
+
+    # 排序：含量(%) 降序，空值排末尾
+    formula.sort(key=lambda x: (
+        -(float(x.get("concentration") or 0)),
+    ))
+    return formula, excluded
+
+
+def check_industry_soft(data, industry):
+    """行业专属软校验（W2/W3，非阻断 WARNING）。
+
+    - W2：industry=="电子" 且物料（未排除的）未标 rohs → WARNING
+    - W3：industry=="化工" 且配方原料未填 cas_number 或 ghs_hazard → WARNING
+    - 含量(%) 列和校验：所有配方原料均填了 concentration → 校验列和 ≈ 100%（±5%）→ 不达标 WARNING
+
+    Args:
+        data: BOM JSON dict。
+        industry: 已推断的行业字符串。
+
+    Returns:
+        warnings 字符串列表（非阻断）。
+    """
+    warnings = []
+    if industry == "电子":
+        components, _ = derive_components(data)
+        for m in components:
+            rohs = str(m.get("rohs") or "").strip()
+            if not rohs:
+                warnings.append(
+                    "WARNING: 物料『%s』未标注 RoHS 合规状态，请确认"
+                    % m.get("name", "")
+                )
+    elif industry == "化工":
+        formula, _ = derive_formula(data)
+        for m in formula:
+            cas = str(m.get("cas_number") or "").strip()
+            ghs = str(m.get("ghs_hazard") or "").strip()
+            if not cas:
+                warnings.append(
+                    "WARNING: 物料『%s』未填写 CAS 号，请确认"
+                    % m.get("name", "")
+                )
+            if not ghs:
+                warnings.append(
+                    "WARNING: 物料『%s』未填写 GHS 危险标识，请确认"
+                    % m.get("name", "")
+                )
+        # 含量(%) 列和校验：仅当所有配方原料均填了 concentration（非空且 > 0）时才校验
+        concs = [float(m.get("concentration") or 0) for m in formula]
+        if concs and all(c > 0 for c in concs):
+            total = sum(concs)
+            if abs(total - 100.0) > 5.0:
+                warnings.append(
+                    "WARNING: 配方表含量(%%) 列和为 %.1f%%，偏离 100%% 超过 ±5%%，请确认"
+                    % total
+                )
+    return warnings
+
+
 def _build_meta_line(approver, effective_date, standard):
     """拼接行 5 表头区文本：仅拼接非空字段，段间用 4 个空格分隔。
 
@@ -319,10 +428,24 @@ def _build_meta_line(approver, effective_date, standard):
     return "    ".join(parts)
 
 
-def build_workbook(data):
-    """根据数据构建 BOM 表 Workbook（8 列 A–H，固定行号）。"""
+def build_workbook(data, industry=None):
+    """根据数据构建 BOM 表 Workbook（8 列 A–H，固定行号）。
+
+    V4：按 industry 分支在工序区后追加专属派生视图：
+    - 食品 → 「三、配料表」（7 列，沿用 V3 逻辑）
+    - 电子 → 「三、元件清单」（8 列，含 RoHS 红黄字标记）
+    - 化工 → 「三、配方表」（8 列，含含量(%) 0.0"%" 格式）
+    - 其他 → 不生成专属视图
+
+    Args:
+        data: BOM JSON dict。
+        industry: 已推断的行业字符串；None 时内部调 infer_industry。
+    """
     from openpyxl import Workbook
     from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+
+    if industry is None:
+        industry, _ = infer_industry(data)
 
     wb = Workbook()
     ws = wb.active
@@ -335,6 +458,9 @@ def build_workbook(data):
     head_font = Font(name="微软雅黑", size=11, bold=True, color="1F3864")
     label_font = Font(name="微软雅黑", size=10, bold=True)
     cell_font = Font(name="微软雅黑", size=10)
+    # V4: RoHS 合规标记字体（红色=不合规，黄色=待确认）
+    rohs_font_red = Font(name="微软雅黑", size=10, color="FF0000")
+    rohs_font_yellow = Font(name="微软雅黑", size=10, color="BF8F00")
     group_fill = PatternFill("solid", fgColor="EAF1FB")
     bar_side = Side(style="medium", color="1F3864")
     group_border = Border(left=bar_side, right=thin, top=thin, bottom=thin)
@@ -523,8 +649,10 @@ def build_workbook(data):
             cell.alignment = left if col in (3, 5) else center
         r += 1
 
-    # 工序区后空行；仅食品类追加「三、配料表」
-    if category == "食品":
+    # ===== V4: 工序区后按 industry 分支追加专属派生视图 =====
+
+    if industry == "食品":
+        # 三、配料表（沿用 V3 逻辑，触发改 industry）
         r += 1
         ws.merge_cells(f"A{r}:H{r}")
         ws.cell(r, 1, "三、配料表").font = label_font
@@ -545,7 +673,7 @@ def build_workbook(data):
             cell.alignment = center
             cell.border = border
         r += 1
-        ingredients, _ = derive_ingredients(data)
+        ingredients, _ = derive_ingredients(data, industry)
         pct_list, _ = ingredient_pct(ingredients)
         for idx, m in enumerate(ingredients):
             row_vals = [
@@ -567,6 +695,120 @@ def build_workbook(data):
                 if col in (5, 6):  # 出品率(%) 与 用量占比%
                     cell.number_format = pct_fmt
             r += 1
+
+    elif industry == "电子":
+        # 三、元件清单（★V4 新增，8 列 A–H）
+        r += 1
+        ws.merge_cells(f"A{r}:H{r}")
+        ws.cell(r, 1, "三、元件清单").font = label_font
+        r += 1
+        component_headers = [
+            "序号",
+            "位号(Designator)",
+            "型号(Part#)",
+            "封装(Footprint)",
+            "物料名称",
+            "数量",
+            "物料类型",
+            "RoHS",
+        ]
+        for col, h in enumerate(component_headers, 1):
+            cell = ws.cell(r, col, h)
+            cell.font = head_font
+            cell.fill = head_fill
+            cell.alignment = center
+            cell.border = border
+        r += 1
+        components, _ = derive_components(data)
+        for idx, m in enumerate(components, 1):
+            rohs_val = str(m.get("rohs") or "").strip()
+            # RoHS 着色规则：否→红字，未知/空→黄字，是→默认
+            if rohs_val == "否":
+                rohs_font = rohs_font_red
+            elif rohs_val == "是":
+                rohs_font = cell_font
+            else:
+                rohs_font = rohs_font_yellow
+
+            row_vals = [
+                idx,
+                m.get("designator", ""),
+                m.get("part_number", ""),
+                m.get("footprint", ""),
+                m.get("name", ""),
+                m.get("usage", ""),
+                m.get("material_type", ""),
+                rohs_val,
+            ]
+            # 对齐：序号/位号/封装/数量/物料类型/RoHS 居中；型号/物料名称 左对齐
+            aligns = [center, center, left, center, left, center, center, center]
+            for col, val in enumerate(row_vals, 1):
+                cell = ws.cell(r, col, val)
+                cell.border = border
+                cell.alignment = aligns[col - 1]
+                if col == 8:  # RoHS 列使用特定字体
+                    cell.font = rohs_font
+                else:
+                    cell.font = cell_font
+            r += 1
+
+    elif industry == "化工":
+        # 三、配方表（★V4 新增，8 列 A–H）
+        r += 1
+        ws.merge_cells(f"A{r}:H{r}")
+        ws.cell(r, 1, "三、配方表").font = label_font
+        r += 1
+        formula_headers = [
+            "序号",
+            "物料名称",
+            "CAS号",
+            "含量(%)",
+            "GHS标识",
+            "物料类型",
+            "计量单位",
+            "用量",
+        ]
+        for col, h in enumerate(formula_headers, 1):
+            cell = ws.cell(r, col, h)
+            cell.font = head_font
+            cell.fill = head_fill
+            cell.alignment = center
+            cell.border = border
+        r += 1
+        formula, _ = derive_formula(data)
+        for idx, m in enumerate(formula, 1):
+            conc_raw = m.get("concentration", "")
+            # 含量(%)：数值则写入 float + 0.0"%" 格式；空则留空
+            if conc_raw != "" and conc_raw is not None:
+                try:
+                    conc_val = float(conc_raw)
+                except (TypeError, ValueError):
+                    conc_val = str(conc_raw)
+            else:
+                conc_val = ""
+
+            row_vals = [
+                idx,
+                m.get("name", ""),
+                m.get("cas_number", ""),
+                conc_val,
+                m.get("ghs_hazard", ""),
+                m.get("material_type", ""),
+                m.get("unit", ""),
+                m.get("usage", ""),
+            ]
+            # 对齐：序号/CAS号/含量/GHS/物料类型/计量单位/用量 居中；物料名称 左对齐
+            aligns = [center, left, center, center, left, center, center, center]
+            for col, val in enumerate(row_vals, 1):
+                cell = ws.cell(r, col, val)
+                cell.font = cell_font
+                cell.border = border
+                cell.alignment = aligns[col - 1]
+                if col == 4 and conc_val != "":  # 含量(%) 数字格式
+                    cell.number_format = pct_fmt
+            r += 1
+
+    # 其他行业（通用/机械/纺织/家具/包装）不生成专属视图
 
     # 列宽（8 列 A–H）：序号/物料名称/单位/用量/出品率/ERP代码/物料类型/所属工序
     for i, w in enumerate([6, 18, 10, 10, 13, 16, 13, 12], 1):
@@ -590,22 +832,50 @@ def main():
             print(" - " + e)
         sys.exit(2)
 
-    # W1 过敏原软校验（非阻断 WARNING，不进 errors）
-    for w in check_allergen_soft(data):
+    # V4: 推断 industry
+    industry, v8_warnings = infer_industry(data)
+    for w in v8_warnings:
         print(w)
 
-    # R4 配料表派生提示（非阻断 WARNING，仅食品类）
-    category = str(data.get("category") or "其他")
-    if category == "食品":
-        _, excluded = derive_ingredients(data)
+    # 行业专属软校验 + 排除提示（非阻断 WARNING）
+    if industry == "食品":
+        # W1/H1 过敏原软校验
+        for w in check_allergen_soft(data):
+            print(w)
+        # 配料表排除提示
+        _, excluded = derive_ingredients(data, industry)
         if excluded:
             names = [str(m.get("name") or "") for m in excluded]
             print(
                 "WARNING: 配料表已排除 %d 条非食用物料（包材/其他/未分类）：%s"
                 % (len(excluded), "、".join(names))
             )
+    elif industry == "电子":
+        # W2 RoHS 软校验
+        for w in check_industry_soft(data, industry):
+            print(w)
+        # 元件清单排除提示
+        _, excluded = derive_components(data)
+        if excluded:
+            names = [str(m.get("name") or "") for m in excluded]
+            print(
+                "WARNING: 元件清单已排除 %d 条非元件物料（其他类）：%s"
+                % (len(excluded), "、".join(names))
+            )
+    elif industry == "化工":
+        # W3 CAS/GHS 软校验 + 含量和校验
+        for w in check_industry_soft(data, industry):
+            print(w)
+        # 配方表排除提示
+        _, excluded = derive_formula(data)
+        if excluded:
+            names = [str(m.get("name") or "") for m in excluded]
+            print(
+                "WARNING: 配方表已排除 %d 条包材物料：%s"
+                % (len(excluded), "、".join(names))
+            )
 
-    wb = build_workbook(data)
+    wb = build_workbook(data, industry)
     wb.save(args.out)
     print("OK:" + args.out)
 

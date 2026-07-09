@@ -1,40 +1,47 @@
 #!/usr/bin/env python3
 """
-import_bom.py - BOM智造师 配套逆向导入脚本（V3 / V2.1）
+import_bom.py - BOM智造师 配套逆向导入脚本（V4 / V3 / V2.1）
 
 读取由 generate_bom.py 生成的 BOM 表 Excel (.xlsx)，反向解析为与正向
 输入 JSON Schema 完全一致的结构化数据，便于「重新编辑已有 BOM」或闭环回写。
 
-V3（V2.1）增强（相对 V2）：
-- 改为「按列头文本映射列号」（不硬编码 A–E），对旧版 5/7 列 Excel 天然兼容。
-- 解析新增字段：category / output_rate / material_type / process / output /
-  approver / effective_date / standard（BOM 级可选）/ materials[].allergen（物料级）。
-- 物料名称改取 _map_header 映射列（**非 A 列**，因 V3 首列为序号）。
-- 忽略「序号」「用量占比%」列；跳过物料区「合计用量」行（首列含「合计」）。
-- 「三、配料表」仅回收「过敏原」列（按物料名称匹配回写 material.allergen），
-  其余派生列不读、不重建配料表实体。
-- 缺列时取默认值（material_type=其他, process=空, output=空, category=其他,
-  output_rate=空, approver/effective_date/standard=空, allergen=空）。
+V4 增强（相对 V3）：
+- 识别「三、元件清单」/「三、配方表」区块标记 → 按物料名回收电子/化工专属字段。
+- 推断 industry：从「三、」区块标记推断（有元件清单→电子，有配方表→化工，
+  有配料表→食品），无则按 category 推断。
+- 输出 JSON 增 `industry` 字段；物料对象增 7 个专属字段默认空串。
+- 旧 Excel（无 industry / 无专属区块）完全兼容。
+
+V3（V2.1）能力（沿用）：
+- 按列头文本映射列号（不硬编码 A–E），对旧版 5/7 列 Excel 天然兼容。
+- 解析 category / output_rate / material_type / process / output /
+  approver / effective_date / standard / materials[].allergen。
+- 「三、配料表」仅回收「过敏原」列（按物料名称匹配回写）。
+- 跳过「序号」「用量占比%」列；跳过物料区「合计用量」行。
 
 依赖 openpyxl；若运行环境缺失则自动安装（复用 ensure_openpyxl 逻辑）。
 
 用法:
     python3 import_bom.py --in BOM_2026-07-07.xlsx [--out data.json]
-
-输出 JSON 结构（与 generate_bom.py 的 --data 输入一致）:
-{
-  "product_name": "...", "category": "...", "output_rate": 130.0,
-  "version": "V1.0", "date": "2026-07-07",
-  "approver": "张三", "effective_date": "2026-07-10", "standard": "GB 7718-2025",
-  "materials": [{"name","unit","usage"(float),"yield_rate"(float),
-                 "erp_code","material_type","process","allergen"}],
-  "processes": [{"step_no","name","desc","work_hours"(float 或 ''),"note","output"}]
-}
 """
 import argparse
 import json
 import sys
 import subprocess
+
+from bom_constants import CATEGORY_TO_INDUSTRY
+
+
+# V4 物料级专属字段（逆向回收后默认空串，未匹配到的保持空）
+_SPECIAL_FIELDS = [
+    "designator",
+    "footprint",
+    "part_number",
+    "rohs",
+    "cas_number",
+    "concentration",
+    "ghs_hazard",
+]
 
 
 def ensure_openpyxl():
@@ -159,11 +166,74 @@ def _col_of(mapping, candidates):
     return None
 
 
+def _infer_industry_from_blocks(ws, category):
+    """从「三、」区块标记推断 industry（V4 新增）。
+
+    推断优先级：
+    1. 有「三、元件清单」→ 电子
+    2. 有「三、配方表」→ 化工
+    3. 有「三、配料表」→ 食品
+    4. 无「三、」区块 → 按 category 推断（CATEGORY_TO_INDUSTRY）
+
+    Args:
+        ws: openpyxl Worksheet。
+        category: 从表头区解析的产品类别字符串。
+
+    Returns:
+        industry 字符串。
+    """
+    if _find_marker_row(ws, "三、元件清单") is not None:
+        return "电子"
+    if _find_marker_row(ws, "三、配方表") is not None:
+        return "化工"
+    if _find_marker_row(ws, "三、配料表") is not None:
+        return "食品"
+    return CATEGORY_TO_INDUSTRY.get(category, "通用")
+
+
+def _recover_block_fields(ws, marker_row, field_col_map, materials):
+    """从「三、」派生区块逐行按物料名回收专属字段（V4 新增）。
+
+    通用回收函数：适用于元件清单和配方表。
+    遇到空行（物料名称为空）或首列以「【」开头（分组标题）则停止。
+
+    Args:
+        ws: openpyxl Worksheet。
+        marker_row: 区块标题行号（1-based）。
+        field_col_map: {物料字段名: 列号} 映射，须包含 "name" 键。
+        materials: 已解析的物料列表（原地修改）。
+    """
+    name_c = field_col_map.get("name")
+    if not name_c:
+        return
+    rr = marker_row + 2  # 跳过标题行和表头行
+    while rr <= ws.max_row:
+        nm = _str_or_empty(ws.cell(rr, name_c).value)
+        if not nm:
+            break
+        if str(ws.cell(rr, 1).value or "").strip().startswith("【"):
+            break
+        for m in materials:
+            if str(m.get("name") or "").strip() == nm:
+                for field, col in field_col_map.items():
+                    if field == "name" or col is None:
+                        continue
+                    raw_val = ws.cell(rr, col).value
+                    if field == "concentration":
+                        m[field] = _to_float(raw_val)
+                    else:
+                        m[field] = _str_or_empty(raw_val)
+                break
+        rr += 1
+
+
 def parse_bom(path):
     """解析 BOM Excel 文件，返回与正向输入 JSON Schema 一致的 dict。
 
     若缺少必要标记（一、物料信息 / 二、工艺工序），打印 PARSE_ERROR 并以
     退出码 2 结束进程。
+
+    V4 增强：推断 industry + 回收电子/化工专属字段 + 物料对象补全专属字段默认空串。
     """
     from openpyxl import load_workbook
 
@@ -221,6 +291,11 @@ def parse_bom(path):
     if process_row is None:
         print("PARSE_ERROR: 未找到工序区标记『二、工艺工序』，无法解析。")
         sys.exit(2)
+
+    # V4: 提前定位所有「三、」区块标记（用于工序区停止边界 + 专属字段回收）
+    ingredient_row = _find_marker_row(ws, "三、配料表")
+    component_row = _find_marker_row(ws, "三、元件清单")
+    formula_row = _find_marker_row(ws, "三、配方表")
 
     # 物料区表头行（标记行 +1），建立列头 → 列号映射。
     material_header_row = material_row + 1
@@ -290,14 +365,16 @@ def parse_bom(path):
     proc_note_col = proc_map.get("备注")
     proc_out_col = proc_map.get("产物")
 
-    # 工序数据行：从表头行下一行起，到「三、配料表」标记或空编号止；
-    # 定位三、配料表标记，若存在则作为停止边界（不解析、不回写正文）。
-    ingredient_row = _find_marker_row(ws, "三、配料表")
-
+    # 工序数据行：从表头行下一行起，到任一「三、」区块标记或空编号止；
+    # V4: 工序区停止边界扩展为所有「三、」区块（元件清单/配方表/配料表）。
     processes = []
     r = process_header_row + 1
     while r <= ws.max_row:
         if ingredient_row is not None and r >= ingredient_row:
+            break
+        if component_row is not None and r >= component_row:
+            break
+        if formula_row is not None and r >= formula_row:
             break
         col1 = ws.cell(r, 1).value
         if col1 is None or str(col1).strip() == "":
@@ -327,8 +404,9 @@ def parse_bom(path):
         )
         r += 1
 
-    # 三、配料表 过敏原回收（V3 新增，仅食品；按物料名称匹配回写 material.allergen）
-    # 不重建配料表实体、不读用量/占比%。
+    # ===== V4: 专属字段回收 =====
+
+    # 三、配料表 过敏原回收（V3 既有逻辑，仅食品；按物料名称匹配回写 material.allergen）
     if ingredient_row is not None:
         ing_map = _map_header(ws, ingredient_row + 1)
         name_c = ing_map.get("物料名称")
@@ -348,9 +426,42 @@ def parse_bom(path):
                         break
                 rr += 1
 
+    # 三、元件清单 电子专属字段回收（V4 新增）
+    if component_row is not None:
+        comp_map = _map_header(ws, component_row + 1)
+        field_col_map = {
+            "name": comp_map.get("物料名称"),
+            "designator": _col_of(comp_map, ["位号(Designator)", "位号"]),
+            "part_number": _col_of(comp_map, ["型号(Part#)", "型号"]),
+            "footprint": _col_of(comp_map, ["封装(Footprint)", "封装"]),
+            "rohs": _col_of(comp_map, ["RoHS"]),
+        }
+        _recover_block_fields(ws, component_row, field_col_map, materials)
+
+    # 三、配方表 化工专属字段回收（V4 新增）
+    if formula_row is not None:
+        form_map = _map_header(ws, formula_row + 1)
+        field_col_map = {
+            "name": form_map.get("物料名称"),
+            "cas_number": _col_of(form_map, ["CAS号", "CAS"]),
+            "concentration": _col_of(form_map, ["含量(%)", "含量"]),
+            "ghs_hazard": _col_of(form_map, ["GHS标识", "GHS"]),
+        }
+        _recover_block_fields(ws, formula_row, field_col_map, materials)
+
+    # V4: 物料对象补全专属字段默认空串（未回收到的）
+    for m in materials:
+        for f in _SPECIAL_FIELDS:
+            if f not in m:
+                m[f] = ""
+
+    # V4: 推断 industry（从区块标记或 category 推断）
+    industry = _infer_industry_from_blocks(ws, category)
+
     return {
         "product_name": product_name,
         "category": category,
+        "industry": industry,
         "output_rate": output_rate,
         "version": version,
         "date": date,

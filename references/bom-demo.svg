@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="820" height="720" viewBox="0 0 820 720" font-family="Microsoft YaHei, sans-serif">
-  <rect x="0" y="0" width="820" height="720" fill="#FFFFFF"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="1180" viewBox="0 0 820 1180" font-family="Microsoft YaHei, sans-serif">
+  <rect x="0" y="0" width="820" height="1180" fill="#FFFFFF"/>
 
   <!-- 标题行 -->
   <rect x="25" y="20" width="770" height="36" fill="#FFFFFF" stroke="#BFBFBF"/>
@@ -303,4 +303,234 @@
     <text x="595" y="709" text-anchor="middle">0.4%</text>
     <text x="663" y="709"></text>
   </g>
+
+  <!-- ===== V4 电子行业示例：三、元件清单 ===== -->
+  <rect x="25" y="730" width="770" height="26" fill="#F5F5F5" stroke="#BFBFBF"/>
+  <text x="410" y="747" text-anchor="middle" font-size="11" font-weight="bold" fill="#666666">── V4 电子行业示例：industry=电子 →「三、元件清单」──</text>
+
+  <!-- 区块标题 -->
+  <rect x="25" y="756" width="770" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <text x="33" y="773" font-size="10" font-weight="bold" fill="#333333">三、元件清单</text>
+
+  <!-- 元件清单表头（8 列 A–H） -->
+  <g>
+    <rect x="25" y="782" width="40" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="65" y="782" width="110" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="175" y="782" width="140" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="315" y="782" width="100" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="415" y="782" width="130" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="545" y="782" width="60" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="605" y="782" width="90" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="695" y="782" width="100" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <text x="45" y="799" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">序号</text>
+    <text x="120" y="799" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">位号(Designator)</text>
+    <text x="245" y="799" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">型号(Part#)</text>
+    <text x="365" y="799" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">封装(Footprint)</text>
+    <text x="480" y="799" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">物料名称</text>
+    <text x="575" y="799" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">数量</text>
+    <text x="650" y="799" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">物料类型</text>
+    <text x="745" y="799" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">RoHS</text>
+  </g>
+
+  <!-- 元件数据（按 物料类型+位号 升序；RoHS 否→红字，空→黄字） -->
+  <g font-size="10" fill="#333333">
+    <!-- C1 电容 是 -->
+    <rect x="25" y="808" width="40" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="65" y="808" width="110" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="175" y="808" width="140" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="315" y="808" width="100" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="415" y="808" width="130" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="545" y="808" width="60" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="605" y="808" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="695" y="808" width="100" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="45" y="824" text-anchor="middle">1</text>
+    <text x="120" y="824" text-anchor="middle">C1</text>
+    <text x="180" y="824">CL10A105KP8</text>
+    <text x="365" y="824" text-anchor="middle">0805</text>
+    <text x="423" y="824">贴片电容</text>
+    <text x="575" y="824" text-anchor="middle">4</text>
+    <text x="650" y="824" text-anchor="middle">电容</text>
+    <text x="745" y="824" text-anchor="middle">是</text>
+
+    <!-- D1 二极管 否 → 红字 -->
+    <rect x="25" y="832" width="40" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="65" y="832" width="110" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="175" y="832" width="140" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="315" y="832" width="100" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="415" y="832" width="130" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="545" y="832" width="60" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="605" y="832" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="695" y="832" width="100" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="45" y="848" text-anchor="middle">2</text>
+    <text x="120" y="848" text-anchor="middle">D1</text>
+    <text x="180" y="848">1N4148W</text>
+    <text x="365" y="848" text-anchor="middle">SOD-123</text>
+    <text x="423" y="848">开关二极管</text>
+    <text x="575" y="848" text-anchor="middle">1</text>
+    <text x="650" y="848" text-anchor="middle">二极管</text>
+    <text x="745" y="848" text-anchor="middle" fill="#FF0000" font-weight="bold">否</text>
+
+    <!-- R1 电阻 是 -->
+    <rect x="25" y="856" width="40" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="65" y="856" width="110" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="175" y="856" width="140" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="315" y="856" width="100" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="415" y="856" width="130" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="545" y="856" width="60" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="605" y="856" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="695" y="856" width="100" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="45" y="872" text-anchor="middle">3</text>
+    <text x="120" y="872" text-anchor="middle">R1</text>
+    <text x="180" y="872">RC0805FR-07</text>
+    <text x="365" y="872" text-anchor="middle">0805</text>
+    <text x="423" y="872">贴片电阻</text>
+    <text x="575" y="872" text-anchor="middle">2</text>
+    <text x="650" y="872" text-anchor="middle">电阻</text>
+    <text x="745" y="872" text-anchor="middle">是</text>
+
+    <!-- U1 IC 是 -->
+    <rect x="25" y="880" width="40" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="65" y="880" width="110" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="175" y="880" width="140" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="315" y="880" width="100" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="415" y="880" width="130" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="545" y="880" width="60" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="605" y="880" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="695" y="880" width="100" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="45" y="896" text-anchor="middle">4</text>
+    <text x="120" y="896" text-anchor="middle">U1</text>
+    <text x="180" y="896">STM32F103C8T6</text>
+    <text x="365" y="896" text-anchor="middle">LQFP-48</text>
+    <text x="423" y="896">MCU</text>
+    <text x="575" y="896" text-anchor="middle">1</text>
+    <text x="650" y="896" text-anchor="middle">IC</text>
+    <text x="745" y="896" text-anchor="middle">是</text>
+
+    <!-- Y1 晶振 空 → 黄字(待确认) -->
+    <rect x="25" y="904" width="40" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="65" y="904" width="110" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="175" y="904" width="140" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="315" y="904" width="100" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="415" y="904" width="130" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="545" y="904" width="60" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="605" y="904" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="695" y="904" width="100" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="45" y="920" text-anchor="middle">5</text>
+    <text x="120" y="920" text-anchor="middle">Y1</text>
+    <text x="180" y="920">8MHz</text>
+    <text x="365" y="920" text-anchor="middle">HC-49S</text>
+    <text x="423" y="920">晶振</text>
+    <text x="575" y="920" text-anchor="middle">1</text>
+    <text x="650" y="920" text-anchor="middle">晶振</text>
+    <text x="745" y="920" text-anchor="middle" fill="#BF8F00" font-weight="bold">（待确认）</text>
+  </g>
+
+  <!-- RoHS 着色说明 -->
+  <text x="33" y="945" font-size="9" fill="#999999">注：RoHS=否→红字(FF0000)，空/未知→黄字(BF8F00)，是→默认；已排除"其他"类物料：裸PCB板、贴片完成板</text>
+
+  <!-- ===== V4 化工行业示例：三、配方表 ===== -->
+  <rect x="25" y="960" width="770" height="26" fill="#F5F5F5" stroke="#BFBFBF"/>
+  <text x="410" y="977" text-anchor="middle" font-size="11" font-weight="bold" fill="#666666">── V4 化工行业示例：industry=化工 →「三、配方表」──</text>
+
+  <!-- 区块标题 -->
+  <rect x="25" y="986" width="770" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <text x="33" y="1003" font-size="10" font-weight="bold" fill="#333333">三、配方表</text>
+
+  <!-- 配方表表头（8 列 A–H） -->
+  <g>
+    <rect x="25" y="1012" width="40" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="65" y="1012" width="140" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="205" y="1012" width="120" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="325" y="1012" width="80" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="405" y="1012" width="90" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="495" y="1012" width="90" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="585" y="1012" width="80" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="665" y="1012" width="130" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <text x="45" y="1029" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">序号</text>
+    <text x="135" y="1029" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">物料名称</text>
+    <text x="265" y="1029" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">CAS号</text>
+    <text x="365" y="1029" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">含量(%)</text>
+    <text x="450" y="1029" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">GHS标识</text>
+    <text x="540" y="1029" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">物料类型</text>
+    <text x="625" y="1029" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">计量单位</text>
+    <text x="730" y="1029" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">用量</text>
+  </g>
+
+  <!-- 配方数据（按含量降序：65.0 / 30.0 / 3.0 / 2.0；列和=100.0%） -->
+  <g font-size="10" fill="#333333">
+    <!-- 1 乙醇 65.0% -->
+    <rect x="25" y="1038" width="40" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="65" y="1038" width="140" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="205" y="1038" width="120" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="325" y="1038" width="80" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="405" y="1038" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="495" y="1038" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="585" y="1038" width="80" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="665" y="1038" width="130" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="45" y="1054" text-anchor="middle">1</text>
+    <text x="73" y="1054">乙醇</text>
+    <text x="213" y="1054">64-17-5</text>
+    <text x="365" y="1054" text-anchor="middle">65.0%</text>
+    <text x="450" y="1054" text-anchor="middle">GHS02</text>
+    <text x="540" y="1054" text-anchor="middle">主料</text>
+    <text x="625" y="1054" text-anchor="middle">kg</text>
+    <text x="730" y="1054" text-anchor="middle">6.5</text>
+
+    <!-- 2 去离子水 30.0% -->
+    <rect x="25" y="1062" width="40" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="65" y="1062" width="140" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="205" y="1062" width="120" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="325" y="1062" width="80" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="405" y="1062" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="495" y="1062" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="585" y="1062" width="80" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="665" y="1062" width="130" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="45" y="1078" text-anchor="middle">2</text>
+    <text x="73" y="1078">去离子水</text>
+    <text x="213" y="1078">7732-18-5</text>
+    <text x="365" y="1078" text-anchor="middle">30.0%</text>
+    <text x="450" y="1078" text-anchor="middle"></text>
+    <text x="540" y="1078" text-anchor="middle">溶剂</text>
+    <text x="625" y="1078" text-anchor="middle">kg</text>
+    <text x="730" y="1078" text-anchor="middle">3.0</text>
+
+    <!-- 3 甘油 3.0% -->
+    <rect x="25" y="1086" width="40" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="65" y="1086" width="140" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="205" y="1086" width="120" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="325" y="1086" width="80" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="405" y="1086" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="495" y="1086" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="585" y="1086" width="80" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="665" y="1086" width="130" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="45" y="1102" text-anchor="middle">3</text>
+    <text x="73" y="1102">甘油</text>
+    <text x="213" y="1102">56-81-5</text>
+    <text x="365" y="1102" text-anchor="middle">3.0%</text>
+    <text x="450" y="1102" text-anchor="middle"></text>
+    <text x="540" y="1102" text-anchor="middle">添加剂</text>
+    <text x="625" y="1102" text-anchor="middle">kg</text>
+    <text x="730" y="1102" text-anchor="middle">0.3</text>
+
+    <!-- 4 薄荷香精 2.0% -->
+    <rect x="25" y="1110" width="40" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="65" y="1110" width="140" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="205" y="1110" width="120" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="325" y="1110" width="80" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="405" y="1110" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="495" y="1110" width="90" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="585" y="1110" width="80" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="665" y="1110" width="130" height="24" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="45" y="1126" text-anchor="middle">4</text>
+    <text x="73" y="1126">薄荷香精</text>
+    <text x="213" y="1126"></text>
+    <text x="365" y="1126" text-anchor="middle">2.0%</text>
+    <text x="450" y="1126" text-anchor="middle">GHS07</text>
+    <text x="540" y="1126" text-anchor="middle">添加剂</text>
+    <text x="625" y="1126" text-anchor="middle">kg</text>
+    <text x="730" y="1126" text-anchor="middle">0.2</text>
+  </g>
+
+  <!-- 含量和说明 -->
+  <text x="33" y="1155" font-size="9" fill="#999999">注：按含量(%) 降序排列；列和=100.0%（65.0+30.0+3.0+2.0）；含量(%) 数字格式 0.0"%"；已排除"包材"类物料：消毒液基料、喷雾瓶</text>
 </svg>

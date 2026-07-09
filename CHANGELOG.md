@@ -1,5 +1,66 @@
 # Changelog · BOM智造师（bom-zhizao-shi）
 
+## [V4.0] - 2026-07-09
+
+> 行业标识 + 专属派生视图 + 软校验增强；物料区 8 列不变，新增 `bom_constants.py` 共享常量模块；向后完全兼容旧 JSON/Excel。
+
+### 新增字段（正向 / 逆向 Schema 一致）
+- **`industry`**（行业标识，选填）：BOM 级可选字段，8 值枚举 {食品,电子,化工,机械,纺织,家具,包装,通用}；默认按 `category` 推断（食品→食品，日化/医药→化工，工业品/其他→通用）；非法值 V8 WARNING 回退推断（非阻断）；决定专属派生视图（食品→配料表，电子→元件清单，化工→配方表）。
+- **`materials[].designator`**（位号，选填）：电子元件位号（如 R1、C3、U5），默认 `""`；仅电子元件清单展示。
+- **`materials[].footprint`**（封装，选填）：电子元件封装（如 0805、SOIC-8），默认 `""`。
+- **`materials[].part_number`**（型号，选填）：电子元件型号（如 STM32F103C8T6），默认 `""`。
+- **`materials[].rohs`**（RoHS 合规状态，选填）：∈ {是,否,未知}，默认 `""`（等价未知）；仅电子元件清单展示；着色规则：否→红字 FF0000，未知/空→黄字 BF8F00，是→默认。
+- **`materials[].cas_number`**（CAS 号，选填）：化学品 CAS 登记号（如 7732-18-5），默认 `""`；仅化工配方表展示。
+- **`materials[].concentration`**（含量(%)，选填）：配方中该原料的含量百分比，默认 `""`；仅化工配方表展示；空则留空不显示 0.0%。
+- **`materials[].ghs_hazard`**（GHS 危险标识，选填）：如 GHS07，默认 `""`；仅化工配方表展示。
+
+### 共享常量模块（bom_constants.py）
+- 新建 `scripts/bom_constants.py`（纯 Python 标准库，无第三方依赖），定义 `INDUSTRIES`、`CATEGORY_TO_INDUSTRY`、`COMPONENT_TYPES`、`COMPONENT_EXCLUDE`、`FORMULA_TYPES`、`FORMULA_EXCLUDE`、`INDUSTRY_STANDARD`。
+- 从 `generate_bom.py` 迁入 `EDIBLE`、`ALLERGEN_SET`、`ALLERGEN_HINTS`（单一真相源，避免两脚本各自复制漂移）。
+- `generate_bom.py` 与 `import_bom.py` 均 `from bom_constants import ...`。
+
+### 业务规则与派生视图
+- **行业推断**：`infer_industry(data)` → 显式优先 → category 推断 → V8 WARNING 回退。
+- **元件清单（电子）**：`derive_components(data)` 排除 `material_type ∈ {"其他"}`，按 `(material_type, designator)` 升序排序（空位号用 `\uffff` 哨兵排末尾）；Excel 「三、元件清单」8 列 A–H：`序号|位号(Designator)|型号(Part#)|封装(Footprint)|物料名称|数量|物料类型|RoHS`；RoHS 红黄字标记。
+- **配方表（化工）**：`derive_formula(data)` 排除 `material_type ∈ {"包材"}`，按 `concentration` 降序排序（空排末尾）；Excel 「三、配方表」8 列 A–H：`序号|物料名称|CAS号|含量(%)|GHS标识|物料类型|计量单位|用量`；含量(%) 数字格式 `0.0"%"`。
+- **配料表触发变更**：从 `category=="食品"` 改为 `industry=="食品"`（含推断，行为不变）。
+- **执行标准行业建议**：食品→GB 7718-2025，电子→GB/T 39560，化工→GB/T 16483-2008。
+
+### 软校验增强（非阻断，退出码 0）
+- **V8**：`industry` 非空但不在枚举内 → `WARNING: industry 值『{value}』不在枚举内（…），已回退为推断值`。
+- **W2**：电子行业，元件清单内物料未标 `rohs` → `WARNING: 物料『{name}』未标注 RoHS 合规状态，请确认`。
+- **W3a**：化工行业，配方表内物料未填 `cas_number` → `WARNING: 物料『{name}』未填写 CAS 号，请确认`。
+- **W3b**：化工行业，配方表内物料未填 `ghs_hazard` → `WARNING: 物料『{name}』未填写 GHS 危险标识，请确认`。
+- **含量和校验**：化工行业，所有配方原料均填 concentration 时校验列和 ≈ 100%（±5%）→ `WARNING: 配方表含量(%) 列和为 {total:.1f}%，偏离 100% 超过 ±5%，请确认`。
+- **排除提示（电子）**：`WARNING: 元件清单已排除 {N} 条非元件物料（其他类）：{names}`。
+- **排除提示（化工）**：`WARNING: 配方表已排除 {N} 条包材物料：{names}`。
+- W1/H1 过敏原软校验沿用 V3（不变）。
+
+### 逆向导入增强（import_bom.py）
+- 新增 `_infer_industry_from_blocks(ws, category)`：从「三、」区块标记推断 industry（有元件清单→电子，有配方表→化工，有配料表→食品，无→按 category 推断）。
+- 新增 `_recover_block_fields(ws, marker_row, field_col_map, materials)`：通用区块字段回收函数，按物料名匹配回写专属字段。
+- 从「三、元件清单」回收 `designator`/`part_number`/`footprint`/`rohs`；从「三、配方表」回收 `cas_number`/`concentration`/`ghs_hazard`。
+- 物料对象补全 7 个专属字段默认空串（未回收到的）。
+- 输出 JSON 增 `industry` 字段。
+- 工序区停止边界扩展为所有「三、」区块标记。
+- 旧 Excel（无 industry / 无专属区块）完全兼容。
+
+### 向后兼容
+- 旧 JSON 缺 `industry` → 按 `category` 推断（行为零变化）。
+- 旧 JSON 缺 7 个专属物料字段 → 默认空串。
+- 旧 JSON `industry` 非法值 → V8 WARNING + 回退推断。
+- 旧 Excel 无「三、元件清单」/「三、配方表」区块 → 按 category 推断 → 完全兼容。
+- 现有食品 Excel（有「三、配料表」）→ 推断 industry=食品 → 配料表照常 → 行为零变化。
+
+### 文档与示例
+- `references/bom-spec.md`：更新 JSON Schema（industry + 7 专属字段）、Excel 列定义（元件清单/配方表）、industry 推断逻辑、逆向规则、向后兼容表。
+- `SKILL.md`：阶段零追加 industry 可选问题；阶段一物料模板按 industry 动态追加专属字段；汇总确认展示对应专属视图预览；执行标准行业建议；数据校验补 V8/W2/W3 说明。
+- `README.md`：字段校验表加 industry/专属字段；Excel 结构说明加元件清单/配方表区块；向后兼容说明；已知限制更新；JSON 示例增 industry/专属字段。
+- `references/bom-demo.svg`：追加电子元件清单/化工配方表区块示意图。
+- `examples/`：新增 `sample_bom_v4_electronic.json`/`.xlsx`（电子行业，含 RoHS 着色）与 `sample_bom_v4_chemical.json`/`.xlsx`（化工行业，含含量% 格式）。
+
+---
+
 ## [V2.1] - 2026-07-09（内部版本号记为 V3）
 
 > 最小变更、向后兼容的增量；Excel 列数 7→8（A–H），新增可选元数据与配料表占比/过敏原，无新增阻断级校验。
