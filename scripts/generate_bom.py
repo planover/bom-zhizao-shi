@@ -13,6 +13,18 @@ V4 新增能力（相对 V3）：
 - 软校验：V8（industry 枚举）、W2（RoHS 未标）、W3（CAS/GHS 未填）、含量(%) 列和校验。
 - 共享常量迁入 `bom_constants.py`（EDIBLE / ALLERGEN_SET / ALLERGEN_HINTS / V4 新常量）。
 
+V5 增量（相对 V4）：
+- 行业专属派生视图扩充：纺织→「三、面料辅料清单」（8 列），家具→「三、家具物料清单」（8 列）。
+- 电子「三、元件清单」扩列至 14 列（A–N）：新增 manufacturer/tolerance/rated_power/
+  rated_voltage/alternate/reflow_temp 6 个工程/合规字段。
+- 化工「三、配方表」扩列至 13 列（A–M）：新增 purity/physical_state/flash_point/
+  storage_condition/hazard_class 5 个 SDS 关键字段。
+- 跨行业「成本明细」视图（有行业视图时为「四、成本明细」，否则「三、成本明细」，
+  8 列含单价/币种/总价派生 + 成本合计行）；物料级新增 unit_price/currency。
+- 共享常量迁入 V5 新增：TEXTILE_TYPES/TEXTILE_EXCLUDE/FURNITURE_TYPES/FURNITURE_EXCLUDE/
+  EDIBLE_LIST/INDUSTRY_STANDARD(增纺织/家具)/INDUSTRY_TEMPLATES。
+- 不新增任何阻断/软校验（保持最小变更、最低回归风险）。
+
 V3（V2.1）能力（沿用）：
 - Excel 物料区 8 列（A–H）：首列「序号」全局连续、跨工序分组不重置。
 - BOM 级可选字段 `approver` / `effective_date` / `standard`（行 5 单格合并）。
@@ -40,11 +52,22 @@ from bom_constants import (
     EDIBLE,
     ALLERGEN_SET,
     ALLERGEN_HINTS,
+    TEXTILE_TYPES,
+    TEXTILE_EXCLUDE,
+    FURNITURE_TYPES,
+    FURNITURE_EXCLUDE,
+    EDIBLE_LIST,
+    INDUSTRY_TEMPLATES,
 )
 
 
 # 产品类别枚举（R1 / R4）
 CATEGORIES = {"食品", "工业品", "日化化妆品", "医药", "其他"}
+
+# V5 成本币种默认值（currency 选填，缺省为人民币(CNY)）
+DEFAULT_CURRENCY = "人民币(CNY)"
+# 存在「三、」行业派生视图的行业集合（用于成本视图双编号判定）
+INDUSTRY_VIEW_SET = {"食品", "电子", "化工", "纺织", "家具"}
 
 
 def ensure_openpyxl():
@@ -360,6 +383,78 @@ def derive_formula(data):
         -(float(x.get("concentration") or 0)),
     ))
     return formula, excluded
+
+
+def derive_textile(data):
+    """派生面料辅料清单（仅纺织行业）。
+
+    返回 (items, excluded)：
+    - items: 纺织物料（排除 material_type ∈ TEXTILE_EXCLUDE，即"其他"类）
+    - excluded: 被排除的物料（包装/其他类）
+
+    排序：物料类型升序 → 物料名称升序（与 V4 电子/化工同构，升序稳定）。
+    """
+    items, excluded = [], []
+    for m in data.get("materials", []):
+        mt = str(m.get("material_type") or "其他").strip() or "其他"
+        if mt in TEXTILE_EXCLUDE:
+            excluded.append(m)
+        else:
+            items.append(m)
+
+    # 排序：物料类型（升序）→ 物料名称（升序，空排末尾）
+    items.sort(key=lambda x: (
+        str(x.get("material_type") or ""),
+        str(x.get("name") or ""),
+    ))
+    return items, excluded
+
+
+def derive_furniture(data):
+    """派生家具物料清单（仅家具行业）。
+
+    返回 (items, excluded)：
+    - items: 家具物料（排除 material_type ∈ FURNITURE_EXCLUDE，即"其他"类）
+    - excluded: 被排除的物料
+
+    排序：物料类型升序 → 物料名称升序。
+    """
+    items, excluded = [], []
+    for m in data.get("materials", []):
+        mt = str(m.get("material_type") or "其他").strip() or "其他"
+        if mt in FURNITURE_EXCLUDE:
+            excluded.append(m)
+        else:
+            items.append(m)
+
+    # 排序：物料类型（升序）→ 物料名称（升序，空排末尾）
+    items.sort(key=lambda x: (
+        str(x.get("material_type") or ""),
+        str(x.get("name") or ""),
+    ))
+    return items, excluded
+
+
+def derive_cost(data):
+    """派生成本明细（跨行业，任一物料 unit_price 非空即纳入）。
+
+    返回 (cost_items, has_cost)：
+    - cost_items: unit_price 非空（≠"" 且可转 float）的物料列表（含被行业视图
+      排除的"其他"/"包材"类，成本核算面向全物料）
+    - has_cost: 列表非空即为 True（触发生成成本视图）
+
+    注意：total_price 不存 JSON，渲染时按 usage × unit_price 实时计算（派生展示）。
+    """
+    cost_items = []
+    for m in data.get("materials", []):
+        up = m.get("unit_price", "")
+        if up not in ("", None):
+            try:
+                if float(up) >= 0:
+                    cost_items.append(m)
+            except (TypeError, ValueError):
+                pass
+    return cost_items, bool(cost_items)
 
 
 def check_industry_soft(data, industry):
@@ -697,9 +792,9 @@ def build_workbook(data, industry=None):
             r += 1
 
     elif industry == "电子":
-        # 三、元件清单（★V4 新增，8 列 A–H）
+        # 三、元件清单（★V4 新增，★V5 扩列至 14 列 A–N）
         r += 1
-        ws.merge_cells(f"A{r}:H{r}")
+        ws.merge_cells(f"A{r}:N{r}")
         ws.cell(r, 1, "三、元件清单").font = label_font
         r += 1
         component_headers = [
@@ -711,6 +806,12 @@ def build_workbook(data, industry=None):
             "数量",
             "物料类型",
             "RoHS",
+            "制造商",
+            "容差",
+            "额定功率",
+            "额定电压",
+            "替代料",
+            "封装温度",
         ]
         for col, h in enumerate(component_headers, 1):
             cell = ws.cell(r, col, h)
@@ -739,9 +840,19 @@ def build_workbook(data, industry=None):
                 m.get("usage", ""),
                 m.get("material_type", ""),
                 rohs_val,
+                m.get("manufacturer", ""),
+                m.get("tolerance", ""),
+                m.get("rated_power", ""),
+                m.get("rated_voltage", ""),
+                m.get("alternate", ""),
+                m.get("reflow_temp", ""),
             ]
-            # 对齐：序号/位号/封装/数量/物料类型/RoHS 居中；型号/物料名称 左对齐
-            aligns = [center, center, left, center, left, center, center, center]
+            # 对齐：序号/位号/封装/数量/物料类型/RoHS/容差/额定功率/额定电压/替代料/封装温度 居中；
+            # 型号/物料名称/制造商 左对齐
+            aligns = [
+                center, center, left, center, left, center, center, center,
+                left, center, center, center, left, center,
+            ]
             for col, val in enumerate(row_vals, 1):
                 cell = ws.cell(r, col, val)
                 cell.border = border
@@ -753,9 +864,9 @@ def build_workbook(data, industry=None):
             r += 1
 
     elif industry == "化工":
-        # 三、配方表（★V4 新增，8 列 A–H）
+        # 三、配方表（★V4 新增，★V5 扩列至 13 列 A–M）
         r += 1
-        ws.merge_cells(f"A{r}:H{r}")
+        ws.merge_cells(f"A{r}:M{r}")
         ws.cell(r, 1, "三、配方表").font = label_font
         r += 1
         formula_headers = [
@@ -767,6 +878,11 @@ def build_workbook(data, industry=None):
             "物料类型",
             "计量单位",
             "用量",
+            "纯度",
+            "物态",
+            "闪点",
+            "存储条件",
+            "危险等级",
         ]
         for col, h in enumerate(formula_headers, 1):
             cell = ws.cell(r, col, h)
@@ -796,9 +912,18 @@ def build_workbook(data, industry=None):
                 m.get("material_type", ""),
                 m.get("unit", ""),
                 m.get("usage", ""),
+                m.get("purity", ""),
+                m.get("physical_state", ""),
+                m.get("flash_point", ""),
+                m.get("storage_condition", ""),
+                m.get("hazard_class", ""),
             ]
-            # 对齐：序号/CAS号/含量/GHS/物料类型/计量单位/用量 居中；物料名称 左对齐
-            aligns = [center, left, center, center, left, center, center, center]
+            # 对齐：序号/CAS号/含量/GHS/物料类型/计量单位/用量/纯度/物态/闪点/危险等级 居中；
+            # 物料名称/存储条件 左对齐
+            aligns = [
+                center, left, center, center, left, center, center, center,
+                center, center, center, left, center,
+            ]
             for col, val in enumerate(row_vals, 1):
                 cell = ws.cell(r, col, val)
                 cell.font = cell_font
@@ -808,10 +933,158 @@ def build_workbook(data, industry=None):
                     cell.number_format = pct_fmt
             r += 1
 
-    # 其他行业（通用/机械/纺织/家具/包装）不生成专属视图
+    elif industry == "纺织":
+        # 三、面料辅料清单（★V5 新增，8 列 A–H）
+        r += 1
+        ws.merge_cells(f"A{r}:H{r}")
+        ws.cell(r, 1, "三、面料辅料清单").font = label_font
+        r += 1
+        textile_headers = [
+            "序号", "物料名称", "物料类型", "成分比例", "纱支",
+            "克重(g/m²)", "幅宽", "色号",
+        ]
+        for col, h in enumerate(textile_headers, 1):
+            cell = ws.cell(r, col, h)
+            cell.font = head_font
+            cell.fill = head_fill
+            cell.alignment = center
+            cell.border = border
+        r += 1
+        textile_items, _ = derive_textile(data)
+        for idx, m in enumerate(textile_items, 1):
+            row_vals = [
+                idx,
+                m.get("name", ""),
+                m.get("material_type", ""),
+                m.get("composition", ""),
+                m.get("yarn_count", ""),
+                m.get("fabric_weight", ""),
+                m.get("width", ""),
+                m.get("color_no", ""),
+            ]
+            # 对齐：序号/物料类型/纱支/克重/幅宽/色号 居中；物料名称/成分比例 左对齐
+            aligns = [center, left, center, left, center, center, center, center]
+            for col, val in enumerate(row_vals, 1):
+                cell = ws.cell(r, col, val)
+                cell.font = cell_font
+                cell.border = border
+                cell.alignment = aligns[col - 1]
+            r += 1
 
-    # 列宽（8 列 A–H）：序号/物料名称/单位/用量/出品率/ERP代码/物料类型/所属工序
-    for i, w in enumerate([6, 18, 10, 10, 13, 16, 13, 12], 1):
+    elif industry == "家具":
+        # 三、家具物料清单（★V5 新增，8 列 A–H）
+        r += 1
+        ws.merge_cells(f"A{r}:H{r}")
+        ws.cell(r, 1, "三、家具物料清单").font = label_font
+        r += 1
+        furniture_headers = [
+            "序号", "物料名称", "物料类型", "材质等级", "尺寸规格",
+            "表面处理", "用量", "色号/花色",
+        ]
+        for col, h in enumerate(furniture_headers, 1):
+            cell = ws.cell(r, col, h)
+            cell.font = head_font
+            cell.fill = head_fill
+            cell.alignment = center
+            cell.border = border
+        r += 1
+        furniture_items, _ = derive_furniture(data)
+        for idx, m in enumerate(furniture_items, 1):
+            row_vals = [
+                idx,
+                m.get("name", ""),
+                m.get("material_type", ""),
+                m.get("material_grade", ""),
+                m.get("spec_size", ""),
+                m.get("surface_treatment", ""),
+                m.get("usage", ""),
+                m.get("color_no", ""),
+            ]
+            # 对齐：序号/物料类型/材质等级/用量/色号 居中；物料名称/尺寸规格/表面处理 左对齐
+            aligns = [center, left, center, center, left, left, center, center]
+            for col, val in enumerate(row_vals, 1):
+                cell = ws.cell(r, col, val)
+                cell.font = cell_font
+                cell.border = border
+                cell.alignment = aligns[col - 1]
+            r += 1
+
+    # 其他行业（通用/机械/包装）不生成「三、」行业专属视图
+
+    # ===== V5: 跨行业成本明细视图（双编号） =====
+    cost_items, has_cost = derive_cost(data)
+    if has_cost:
+        # 有行业视图（食品/电子/化工/纺织/家具）→ 四、成本明细；否则 三、成本明细
+        cost_label = "四、成本明细" if industry in INDUSTRY_VIEW_SET else "三、成本明细"
+        r += 1
+        ws.merge_cells(f"A{r}:H{r}")
+        ws.cell(r, 1, cost_label).font = label_font
+        r += 1
+        cost_headers = [
+            "序号", "物料名称", "物料类型", "用量", "单位", "单价", "币种", "总价",
+        ]
+        for col, h in enumerate(cost_headers, 1):
+            cell = ws.cell(r, col, h)
+            cell.font = head_font
+            cell.fill = head_fill
+            cell.alignment = center
+            cell.border = border
+        r += 1
+        cost_total = 0.0
+        for idx, m in enumerate(cost_items, 1):
+            up_raw = m.get("unit_price", "")
+            usage_raw = m.get("usage", "")
+            try:
+                up_f = float(up_raw) if up_raw not in ("", None) else 0.0
+                usage_f = float(usage_raw) if usage_raw not in ("", None) else 0.0
+                total = round(up_f * usage_f, 2)
+            except (TypeError, ValueError):
+                up_f = 0.0
+                total = ""
+            if isinstance(total, (int, float)):
+                cost_total += total
+            currency_val = str(m.get("currency") or "").strip() or DEFAULT_CURRENCY
+            row_vals = [
+                idx,
+                m.get("name", ""),
+                m.get("material_type", ""),
+                m.get("usage", ""),
+                m.get("unit", ""),
+                up_f if isinstance(up_f, (int, float)) else "",
+                currency_val,
+                total,
+            ]
+            # 对齐：序号/物料类型/用量/单位/单价/总价 居中；物料名称 左对齐；币种 左对齐
+            aligns = [center, left, center, center, center, center, left, center]
+            for col, val in enumerate(row_vals, 1):
+                cell = ws.cell(r, col, val)
+                cell.font = cell_font
+                cell.border = border
+                cell.alignment = aligns[col - 1]
+                if col in (6, 8) and isinstance(val, (int, float)):
+                    cell.number_format = "0.00"  # 单价/总价 数值格式
+            r += 1
+        # 成本合计行：A="成本合计"，H=Σ总价（纯展示，逆向跳过）
+        ws.cell(r, 1, "成本合计").font = label_font
+        ws.cell(r, 1).alignment = left
+        ws.cell(r, 1).border = border
+        tc = ws.cell(r, 8, round(cost_total, 2))
+        tc.font = label_font
+        tc.alignment = center
+        tc.border = border
+        for col in (2, 3, 4, 5, 6, 7):
+            ws.cell(r, col).border = border
+        r += 1
+
+    # 列宽（依据 industry 与扩列扩展）
+    # 电子扩列到 14 列（A–N），化工扩列到 13 列（A–M），其余 8 列（A–H）
+    if industry == "电子":
+        widths = [6, 18, 18, 12, 18, 10, 13, 10, 14, 12, 14, 14, 16, 14]
+    elif industry == "化工":
+        widths = [6, 18, 12, 13, 14, 13, 12, 10, 10, 12, 12, 18, 14]
+    else:
+        widths = [6, 18, 10, 10, 13, 16, 13, 12]
+    for i, w in enumerate(widths, 1):
         ws.column_dimensions[chr(64 + i)].width = w
 
     return wb
@@ -872,6 +1145,24 @@ def main():
             names = [str(m.get("name") or "") for m in excluded]
             print(
                 "WARNING: 配方表已排除 %d 条包材物料：%s"
+                % (len(excluded), "、".join(names))
+            )
+    elif industry == "纺织":
+        # V5: 面料辅料清单排除提示（沿用 V4 排除提示模式，文案同构）
+        _, excluded = derive_textile(data)
+        if excluded:
+            names = [str(m.get("name") or "") for m in excluded]
+            print(
+                "WARNING: 面料辅料清单已排除 %d 条其他类物料：%s"
+                % (len(excluded), "、".join(names))
+            )
+    elif industry == "家具":
+        # V5: 家具物料清单排除提示（沿用 V4 排除提示模式，文案同构）
+        _, excluded = derive_furniture(data)
+        if excluded:
+            names = [str(m.get("name") or "") for m in excluded]
+            print(
+                "WARNING: 家具物料清单已排除 %d 条其他类物料：%s"
                 % (len(excluded), "、".join(names))
             )
 

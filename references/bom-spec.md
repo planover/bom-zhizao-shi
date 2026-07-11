@@ -1,7 +1,9 @@
-# BOM 表结构与输入规范（bom-zhizao-shi · V4 / V3 / V2.1）
+# BOM 表结构与输入规范（bom-zhizao-shi · V5 / V4 / V3 / V2.1）
 
 本文件供 `scripts/generate_bom.py` 与汇总序列化阶段参考，并作为 `scripts/import_bom.py` 逆向解析的契约基线。
 
+> V5 变更摘要：行业专属派生视图扩充——纺织「三、面料辅料清单」（8 列 A–H）、家具「三、家具物料清单」（8 列 A–H）；电子「三、元件清单」扩列至 **14 列（A–N）**（新增 manufacturer/tolerance/rated_power/rated_voltage/alternate/reflow_temp 6 个工程/合规字段，共 10 专属字段）；化工「三、配方表」扩列至 **13 列（A–M）**（新增 purity/physical_state/flash_point/storage_condition/hazard_class 5 个 SDS 字段，共 8 专属字段）；跨行业「成本明细」视图（有行业视图时「四、成本明细」，否则「三、成本明细」，8 列含单价/币种/总价派生 + 成本合计行），物料级新增 `unit_price`/`currency`（currency 默认 人民币(CNY)）；新增行业模板预设 `INDUSTRY_TEMPLATES`（仅交互引导，不写新 JSON 结构）。**V5 不新增任何阻断/软校验**（沿用 V4 同构排除提示）。机械/包装本期仅出评估草案（见 `mechanical-packaging-draft-v5.md`），维持通用兜底。
+>
 > V4 变更摘要：新增 BOM 级可选字段 `industry`（8 值枚举，选填，默认按 `category` 推断）；新增物料级专属字段——电子行业 `designator` / `footprint` / `part_number` / `rohs`，化工行业 `cas_number` / `concentration` / `ghs_hazard`；新增行业专属派生视图——电子「三、元件清单」（8 列，含 RoHS 红黄字标记），化工「三、配方表」（8 列，含含量(%) 数字格式）；配料表触发条件从 `category=="食品"` 改为 `industry=="食品"`（含推断，行为不变）；新增软校验 V8（industry 枚举）/ W2（RoHS 未标）/ W3（CAS/GHS 未填）/ 含量(%) 列和校验（±5%）；共享常量迁入 `scripts/bom_constants.py`（EDIBLE / ALLERGEN_SET / ALLERGEN_HINTS / V4 新常量）。
 >
 > V3（V2.1）变更摘要：Excel 物料区由 7 列扩展为 **8 列（A–H）**，首列新增「序号」（按输入顺序全局连续、跨工序分组不重置）；新增 BOM 级可选字段 `approver` / `effective_date` / `standard`（Excel 行 5 单格合并拼接）；物料区末新增「合计用量」行；食品类「三、配料表」新增「用量占比%」（最大余数法保证列和恰为 100.0%）与「过敏原」两列；新增 `materials[].allergen`（仅食品配料表展示，逆向按物料名回收）；逆向解析改为按列头文本定位并兼容旧版 7/5 列。
@@ -56,8 +58,49 @@
 ```
 
 > 约定：正向 `--data` 输入与逆向 `--out` 输出 **Schema 完全一致**（闭环可回写）。
+> **V5 新增**：物料级专属字段按行业分别为——电子 `manufacturer`/`tolerance`/`rated_power`/`rated_voltage`/`alternate`/`reflow_temp`（在 V4 4 个基础上扩至 10）；化工 `purity`/`physical_state`/`flash_point`/`storage_condition`/`hazard_class`（在 V4 3 个基础上扩至 8）；纺织 `composition`/`yarn_count`/`fabric_weight`/`width`/`color_no`；家具 `material_grade`/`spec_size`/`surface_treatment`/`color_no`；跨行业 `unit_price`/`currency`。`total_price` **不入库**（渲染派生）；`currency` 默认 `人民币(CNY)`。上述所有专属字段均默认空串，逆向导入时补全为空串（未回收到的）。
 > **V4 新增**：BOM 级可选字段 `industry`；物料级 7 个专属字段（`designator`/`footprint`/`part_number`/`rohs`/`cas_number`/`concentration`/`ghs_hazard`）。八者均默认空串；逆向导入时全部补全为空串（未回收到的）。
 > **V3 新增**：`approver`、`effective_date`、`standard`（BOM 级）、`materials[].allergen`（物料级）。四者均默认空串；「序号」「用量占比%」「合计用量」为派生展示，**不进 JSON**。
+
+### V5 行业物料字段示例（节选）
+
+```json
+{
+  "industry": "电子",
+  "materials": [
+    {
+      "name": "主控芯片", "unit": "个", "usage": 1, "yield_rate": 100,
+      "material_type": "IC",
+      "designator": "U1", "part_number": "STM32F103C8T6", "footprint": "LQFP48",
+      "rohs": "是",
+      "manufacturer": "ST", "tolerance": "", "rated_power": "0.36W",
+      "rated_voltage": "3.3V", "alternate": "GD32F103C8T6", "reflow_temp": "260℃",
+      "unit_price": 12.50, "currency": "人民币(CNY)"
+    }
+  ]
+}
+```
+```json
+{
+  "industry": "纺织",
+  "materials": [
+    {"name": "全棉针织布", "unit": "米", "usage": 2.5, "yield_rate": 100,
+     "material_type": "面料",
+     "composition": "棉100%", "yarn_count": "40S", "fabric_weight": "180",
+     "width": "150cm", "color_no": "藏青 01"}
+  ]
+}
+```
+```json
+{
+  "industry": "通用",
+  "materials": [
+    {"name": "支架半成品", "unit": "个", "usage": 10, "yield_rate": 100,
+     "material_type": "其他",
+     "unit_price": 3.50, "currency": "人民币(CNY)"}
+  ]
+}
+```
 
 ### 字段约束总表
 
@@ -65,7 +108,7 @@
 |-----------|------|------|--------------|------|
 | `product_name` | string | **必填** | 非空（R1）；默认 `""` → 空则 VALIDATION_FAILED | 沿用 V2 |
 | `category` | string(enum) | **必填** | ∈ {食品,工业品,日化化妆品,医药,其他}；默认 `其他` | 沿用 V2（R1/R4） |
-| `industry` | string(enum) | **选填（V4 新增）** | ∈ {食品,电子,化工,机械,纺织,家具,包装,通用}；默认按 `category` 推断；非法值 V8 WARNING 回退推断 | 行业标识，决定专属派生视图（食品→配料表，电子→元件清单，化工→配方表）；推断映射：食品→食品，日化/医药→化工，工业品/其他→通用 |
+| `industry` | string(enum) | **选填（V4 新增）** | ∈ {食品,电子,化工,机械,纺织,家具,包装,通用}；默认按 `category` 推断；非法值 V8 WARNING 回退推断 | 行业标识，决定专属派生视图（食品→配料表，电子→元件清单，化工→配方表，纺织→面料辅料清单，家具→家具物料清单）；有任一行业视图且物料含 `unit_price` → 成本视图编号为「四、成本明细」，否则「三、成本明细」；推断映射：食品→食品，日化/医药→化工，工业品/其他→通用 |
 | `output_rate` | number | **必填** | `> 0`；允许 `> 100`；默认 `""` 待补 | 沿用 V2（R2） |
 | `version` | string | 选填 | 默认 `V1.0` | 未变 |
 | `date` | string | 选填 | 默认当天 `YYYY-MM-DD` | 未变 |
@@ -78,7 +121,7 @@
 | `materials[].usage` | number | 必填 | `> 0` | 未变 |
 | `materials[].yield_rate` | number | 必填 | `0 < 值 ≤ 100` | 未变（R2） |
 | `materials[].erp_code` | string | 选填 | 默认 `""` | 未变 |
-| `materials[].material_type` | string(enum) | 选填 | ∈ {原料,添加剂,香精香料,包材,其他}（食品）；或 {电阻,电容,IC,连接器,二极管,三极管,晶振,其他}（电子）；或 {主料,溶剂,催化剂,添加剂,包材,其他}（化工）；默认 `其他` | 沿用 V2（R4 过滤用）；V4 专属视图过滤依据 |
+| `materials[].material_type` | string(enum) | 选填 | ∈ {原料,添加剂,香精香料,包材,其他}（食品）；{电阻,电容,IC,连接器,二极管,三极管,晶振,其他}（电子）；{主料,溶剂,催化剂,添加剂,包材,其他}（化工）；{面料,辅料,纱线,印染,五金,其他}（纺织）；{主材,板材,辅材,五金,面料,其他}（家具）；默认 `其他` | 沿用 V2（R4 过滤用）；V5 专属视图过滤依据（电子/化工/纺织/家具均排除"其他"类；化工额外排除"包材"类） |
 | `materials[].process` | string | 选填 | 引用有效 `step_no`；默认 `""` | 沿用 V2 |
 | `materials[].allergen` | string | **选填（V3 新增）** | 逗号分隔标签，∈ 八大类+其他；默认 `""` | 仅食品配料表展示；软校验 W1/H1 |
 | `materials[].designator` | string | **选填（V4 新增）** | 默认 `""`；电子元件位号（如 R1/C3/U5） | 仅电子元件清单展示 |
@@ -88,6 +131,27 @@
 | `materials[].cas_number` | string | **选填（V4 新增）** | 默认 `""`；化学品 CAS 登记号（如 7732-18-5） | 仅化工配方表展示；软校验 W3 |
 | `materials[].concentration` | number | **选填（V4 新增）** | 默认 `""`；配方含量(%)（如 65.0）；含量和校验 ±5% | 仅化工配方表展示；空则留空（不显示 0.0%） |
 | `materials[].ghs_hazard` | string | **选填（V4 新增）** | 默认 `""`；GHS 危险标识（如 GHS07） | 仅化工配方表展示；软校验 W3 |
+| `materials[].manufacturer` | string | **选填（V5 新增）** | 默认 `""`；元件制造商（如 ST、TI） | 仅电子元件清单（14 列）展示 |
+| `materials[].tolerance` | string | **选填（V5 新增）** | 默认 `""`；标称容差（如 ±1%） | 仅电子元件清单展示 |
+| `materials[].rated_power` | string | **选填（V5 新增）** | 默认 `""`；额定功率（如 0.36W） | 仅电子元件清单展示 |
+| `materials[].rated_voltage` | string | **选填（V5 新增）** | 默认 `""`；额定电压（如 3.3V） | 仅电子元件清单展示 |
+| `materials[].alternate` | string | **选填（V5 新增）** | 默认 `""`；替代料型号（pin-to-pin） | 仅电子元件清单展示 |
+| `materials[].reflow_temp` | string | **选填（V5 新增）** | 默认 `""`；封装/回流焊峰值温度（如 260℃） | 仅电子元件清单展示 |
+| `materials[].purity` | string | **选填（V5 新增）** | 默认 `""`；纯度（如 ≥95%） | 仅化工配方表（13 列）展示 |
+| `materials[].physical_state` | string | **选填（V5 新增）** | 默认 `""`；物态（固/液/气） | 仅化工配方表展示 |
+| `materials[].flash_point` | string | **选填（V5 新增）** | 默认 `""`；闪点（如 13℃） | 仅化工配方表展示 |
+| `materials[].storage_condition` | string | **选填（V5 新增）** | 默认 `""`；存储条件（如 阴凉干燥） | 仅化工配方表展示 |
+| `materials[].hazard_class` | string | **选填（V5 新增）** | 默认 `""`；危险等级（如 易燃液体 类别2） | 仅化工配方表展示 |
+| `materials[].composition` | string | **选填（V5 新增）** | 默认 `""`；成分比例（如 棉60%/涤40%） | 仅纺织面料辅料清单展示 |
+| `materials[].yarn_count` | string | **选填（V5 新增）** | 默认 `""`；纱支（如 40S） | 仅纺织面料辅料清单展示 |
+| `materials[].fabric_weight` | string/number | **选填（V5 新增）** | 默认 `""`；克重(g/m²)（如 180） | 仅纺织面料辅料清单展示 |
+| `materials[].width` | string | **选填（V5 新增）** | 默认 `""`；幅宽（如 150cm） | 仅纺织面料辅料清单展示 |
+| `materials[].color_no` | string | **选填（V5 新增）** | 默认 `""`；色号/花色（纺织/家具共用） | 纺织面料辅料清单 / 家具物料清单展示 |
+| `materials[].material_grade` | string | **选填（V5 新增）** | 默认 `""`；材质等级（如实木/板木） | 仅家具物料清单展示 |
+| `materials[].spec_size` | string | **选填（V5 新增）** | 默认 `""`；尺寸规格（如 1200×600×750mm） | 仅家具物料清单展示 |
+| `materials[].surface_treatment` | string | **选填（V5 新增）** | 默认 `""`；表面处理（如 烤漆） | 仅家具物料清单展示 |
+| `materials[].unit_price` | number | **选填（V5 新增）** | 默认 `""`（不填则不进成本视图）；数值 | 仅成本明细展示；`total_price` 不入库、按 `用量×单价` 实时派生 |
+| `materials[].currency` | string | **选填（V5 新增）** | 默认 `人民币(CNY)`；缺省按人民币(CNY)处理 | 仅成本明细展示 |
 | `processes[]` | array | 选填 | 可 0 条 | 未变 |
 | `processes[].step_no` | string | 必填 | 唯一不重复 | 未变 |
 | `processes[].name` | string | 必填 | 非空 | 未变 |
@@ -123,12 +187,28 @@
 ### 向后兼容默认（R5，旧数据 / 旧文件）
 
 - 旧 JSON 缺 `industry` → 按 `category` 推断（行为零变化）。
-- 旧 JSON 缺物料级专属字段（`designator`/`footprint`/`part_number`/`rohs`/`cas_number`/`concentration`/`ghs_hazard`）→ 默认空串 `""`，专属视图对应列留空。
+- 旧 JSON 缺物料级专属字段（`designator`/`footprint`/`part_number`/`rohs`/`cas_number`/`concentration`/`ghs_hazard` → V4；V5 电子 10/化工 8/纺织 5/家具 4/成本 2）→ 默认空串 `""`，专属视图对应列留空。
+- 旧 JSON 缺 `unit_price`/`currency` → `""`/默认人民币(CNY)，不生成成本视图（行为零变化）。
 - 旧 JSON 缺 `approver` / `effective_date` / `standard` → `""`（正向行 5 留空）。
 - 旧 JSON 缺 `materials[].allergen` → `""`（配料表过敏原列留空）。
 - 其余沿用 V2：`category="其他"`、`output_rate=""`、`material_type="其他"`、`process=""`、`output=""`。
 - 旧版 7 列 / 5 列 Excel 逆向：缺「序号/占比%/过敏原/审批人/生效日期/执行标准」列 → 取默认（`""` / 不读），完全兼容。
-- 旧 Excel 无「三、元件清单」/「三、配方表」区块 → 无区块标记 → 按 category 推断 industry → 完全兼容。
+- 旧 Excel 无「三、元件清单」/「三、配方表」区块 → 无区块标记 → 按 category 推断 industry → 完全兼容；旧 8 列电子/化工 Excel 逆向仍可识别（按列头文本定位，max_col 向后兼容）。
+
+---
+
+## 行业模板预设（INDUSTRY_TEMPLATES · V5，仅交互引导，不写新 JSON 结构）
+
+`scripts/bom_constants.py` 新增 `INDUSTRY_TEMPLATES` 字典，**仅被交互层（SKILL.md）读取**，用于降低采集负担。它**不向输入 JSON Schema 写入任何新字段**（向后兼容旧 JSON 与旧交互）。键为 industry，值含四项：
+
+| 键 | 用途 | 说明 |
+|----|------|------|
+| `material_types` | 阶段一物料类型下拉建议值 | 非强制枚举；如电子 `["电阻","电容","IC","连接器","二极管","三极管","晶振","其他"]` |
+| `standard` | 执行标准自动预填 | 可改；如食品 `GB 7718-2025`、电子 `GB/T 39560`、化工 `GB/T 16483-2008`、纺织 `FZ/T 80004`、家具 `QB/T 1951.1` |
+| `special_fields` | 阶段一物料模板动态追加的专属字段行 | 电子 10 / 化工 8 / 纺织 5 / 家具 4 / 食品 1(过敏原) 个；通用/机械/包装为空 |
+| `preset_processes` | 可选「一键载入工序模板」 | 阶段二工序预填（仅引导，不写新结构）；通用/机械/包装/食品为空 |
+
+> 交互约束（最小变更）：阶段一物料模板、物料类型下拉、执行标准预填、一键载入工序，**全部由交互层按 `INDUSTRY_TEMPLATES[industry]` 动态生成**；生成脚本仍按既有 `industry` + 专属字段渲染，JSON Schema 零新增。机械/包装本期为空模板（维持通用兜底），其正式预置留待 P2（见 `mechanical-packaging-draft-v5.md`）。
 
 ---
 
@@ -136,16 +216,19 @@
 
 > 因 `product_name` 必填非空 + 行 5 可选不挤占行 6，**新格式 Excel 行号固定**（见下表）。旧版 Excel 无行 5 内容、无序号列、无审批人/过敏原，逆向解析**不依赖固定行号**（按标记+列头文本定位），完全兼容。
 
-### V4 行业专属派生视图总览
+### 行业专属派生视图总览（V5）
 
 | industry | 专属视图 | 区块标题 | 列数 | 触发条件 |
 |----------|---------|---------|------|---------|
 | 食品 | 配料表 | `三、配料表` | 7 列（A–G） | `industry == "食品"`（含推断） |
-| 电子 | 元件清单 | `三、元件清单` | 8 列（A–H） | `industry == "电子"` |
-| 化工 | 配方表 | `三、配方表` | 8 列（A–H） | `industry == "化工"` |
-| 通用/机械/纺织/家具/包装 | 无 | — | — | 不生成专属视图 |
+| 电子 | 元件清单 | `三、元件清单` | **14 列（A–N，V5 扩列）** | `industry == "电子"` |
+| 化工 | 配方表 | `三、配方表` | **13 列（A–M，V5 扩列）** | `industry == "化工"` |
+| 纺织 | 面料辅料清单 | `三、面料辅料清单` | 8 列（A–H，V5 新增） | `industry == "纺织"` |
+| 家具 | 家具物料清单 | `三、家具物料清单` | 8 列（A–H，V5 新增） | `industry == "家具"` |
+| 任意（含 通用/机械/包装） | 成本明细 | `四、成本明细`（有行业视图时）/ `三、成本明细`（无行业视图时） | 8 列（A–H） | 任一物料 `unit_price` 非空 |
 
 > 配料表触发条件从 V3 的 `category=="食品"` 改为 V4 的 `industry=="食品"`（含推断），行为不变。
+> V5 成本视图为跨行业视图：有行业专属视图（食品/电子/化工/纺织/家具）→ 编号为「四、成本明细」（位于行业视图之后）；否则 →「三、成本明细」（位于工序区之后）。
 
 ### ASCII 框图（食品类 — 配料表，沿用 V3）
 
@@ -260,24 +343,40 @@
   - **「用量占比%」列（F）**：`round(usage / 可食用物料用量合计 × 100, 1)`，经最大余数法补差使列和恰为 `100.0`；数字格式 `0.0"%"`；纯派生，逆向不读。
   - **「过敏原」列（G）**：取该物料 `allergen`（空则留空）；仅食品类出现。
   - 非食品类**不输出此区块**。逆向仅回收过敏原列（按物料名匹配）。
-- **「三、元件清单」（仅 `industry=="电子"`，工序区后空行起，★V4 新增）**：派生区块。表头 **8 列**（A–H）`序号|位号(Designator)|型号(Part#)|封装(Footprint)|物料名称|数量|物料类型|RoHS`。
+- **「三、元件清单」（仅 `industry=="电子"`，工序区后空行起，★V4 新增，★V5 扩列至 14 列 A–N）**：派生区块。表头 **14 列**（A–N）`序号|位号(Designator)|型号(Part#)|封装(Footprint)|物料名称|数量|物料类型|RoHS|制造商|容差|额定功率|额定电压|替代料|封装温度`。
   - 内容为 `derive_components()` 结果：排除 `material_type ∈ {"其他"}` 的物料（散热片/外壳/包装等），按 `(material_type, designator)` 升序排序（空位号用 `\uffff` 哨兵排末尾）。
   - **RoHS 列（H）**：取该物料 `rohs`。着色规则：`"否"`→红色字 `FF0000`，`"未知"`/空→黄色字 `BF8F00`，`"是"`→默认黑色字。
-  - 非电子类**不输出此区块**。逆向按物料名回收 `designator`/`footprint`/`part_number`/`rohs`。
-- **「三、配方表」（仅 `industry=="化工"`，工序区后空行起，★V4 新增）**：派生区块。表头 **8 列**（A–H）`序号|物料名称|CAS号|含量(%)|GHS标识|物料类型|计量单位|用量`。
+  - 非电子类**不输出此区块**。逆向按物料名回收 `designator`/`footprint`/`part_number`/`rohs` + V5 扩列字段 `manufacturer`/`tolerance`/`rated_power`/`rated_voltage`/`alternate`/`reflow_temp`（按 14 列识别）。
+- **「三、配方表」（仅 `industry=="化工"`，工序区后空行起，★V4 新增，★V5 扩列至 13 列 A–M）**：派生区块。表头 **13 列**（A–M）`序号|物料名称|CAS号|含量(%)|GHS标识|物料类型|计量单位|用量|纯度|物态|闪点|存储条件|危险等级`。
   - 内容为 `derive_formula()` 结果：排除 `material_type ∈ {"包材"}` 的物料（瓶子/标签等），按 `concentration` 降序排序（空排末尾）。
   - **含量(%) 列（D）**：取该物料 `concentration`（数值则写入 float + `0.0"%"` 格式；空则留空，不显示 `0.0%`）。
-  - 非化工类**不输出此区块**。逆向按物料名回收 `cas_number`/`concentration`/`ghs_hazard`。
-- **其他行业（通用/机械/纺织/家具/包装）**：不生成「三、」专属视图。
+  - 非化工类**不输出此区块**。逆向按物料名回收 `cas_number`/`concentration`/`ghs_hazard` + V5 扩列字段 `purity`/`physical_state`/`flash_point`/`storage_condition`/`hazard_class`（按 13 列识别）。
+- **「三、面料辅料清单」（仅 `industry=="纺织"`，工序区后空行起，★V5 新增）**：派生区块。表头 **8 列**（A–H）`序号|物料名称|物料类型|成分比例|纱支|克重(g/m²)|幅宽|色号`。
+  - 内容为 `derive_textile()` 结果：排除 `material_type ∈ {"其他"}` 的物料，按 `(material_type, name)` 升序排序。
+  - 非纺织类**不输出此区块**。逆向按物料名回收 `composition`/`yarn_count`/`fabric_weight`/`width`/`color_no`。
+- **「三、家具物料清单」（仅 `industry=="家具"`，工序区后空行起，★V5 新增）**：派生区块。表头 **8 列**（A–H）`序号|物料名称|物料类型|材质等级|尺寸规格|表面处理|用量|色号/花色`。
+  - 内容为 `derive_furniture()` 结果：排除 `material_type ∈ {"其他"}` 的物料，按 `(material_type, name)` 升序排序。
+  - 非家具类**不输出此区块**。逆向按物料名回收 `material_grade`/`spec_size`/`surface_treatment`/`color_no`。
+- **「成本明细」（跨行业，任一物料 `unit_price` 非空即生成，★V5 新增）**：派生区块。有行业专属视图（食品/电子/化工/纺织/家具）→ 标题 `四、成本明细`（A–H 合并，位于行业视图之后）；否则 → 标题 `三、成本明细`（位于工序区之后）。表头 **8 列**（A–H）`序号|物料名称|物料类型|用量|单位|单价|币种|总价`。
+  - 内容为 `derive_cost()` 结果：纳入**全物料**中 `unit_price` 非空者（含行业视图排除的"其他"/"包材"类，成本核算面向全物料）。
+  - **总价（H）**：`round(usage × unit_price, 2)` 实时派生（**不入库**，逆向不回收）；数字格式 `0.00`。
+  - **币种（G）**：取 `currency`，缺省 `人民币(CNY)`；数字格式同单价/总价列。
+  - 末行「成本合计」：A 列写「成本合计」，H 列写 Σ总价（纯展示，**逆向跳过**）。
+  - 逆向按物料名回收 `unit_price`/`currency`（关键字 `成本明细` 识别）。
+- **其他行业（通用/机械/包装）**：不生成「三、」行业专属视图（机械/包装本期仅评估草案，见 `mechanical-packaging-draft-v5.md`）；仅当物料含 `unit_price` 时生成「三、成本明细」。
 - **样式**：标题 16pt 深蓝加粗居中；区标题 10pt 加粗；表头蓝底加粗居中带边框；数据单元格带边框、文本列左对齐、数值列居中；**数字格式统一**：出品率 / 全产品出品率 / 用量占比% / 含量(%) 均 `0.0"%"`。
 
-### 列宽建议（8 列 A–H，全表共享）
+### 列宽建议
 
-| 列 | A 序号 | B 物料名称 | C 单位 | D 用量 | E 出品率(%) | F ERP物料代码 | G 物料类型 | H 所属工序 |
-|----|--------|-----------|--------|--------|------------|--------------|-----------|-----------|
-| 宽 | 6 | 18 | 10 | 10 | 13 | 16 | 13 | 12 |
+依据 industry 与扩列扩展（全表共享）：
 
-> 工序区仅用 A–F（G/H 留空）；配料表复用 A–G；元件清单/配方表使用全部 8 列（A–H）。
+| industry | 列数 | A 序号 | B 物料名称 | C/D/E/F…（单位/用量/出品率/ERP…） | 扩列附加列 |
+|----------|------|--------|-----------|----------------------------------|-----------|
+| 通用/食品/纺织/家具 | 8 列（A–H） | 6 | 18 | C10/D10/E13/F16/G13/H12 | — |
+| 电子 | **14 列（A–N）** | 6 | 18 | C18/D12/E18/F10/G13/H10 | I14/J12/K14/L14/M16/N14（制造商/容差/额定功率/额定电压/替代料/封装温度） |
+| 化工 | **13 列（A–M）** | 6 | 18 | C12/D13/E14/F13/G12/H10 | I10/J12/K12/L18/M14（纯度/物态/闪点/存储条件/危险等级） |
+
+> 工序区仅用 A–F（G/H 留空）；配料表复用 A–G；元件清单/配方表/面料辅料清单/家具物料清单/成本明细使用 A–H；电子扩至 A–N、化工扩至 A–M。成本明细列宽同 8 列（A–H）。
 
 ---
 
@@ -296,12 +395,14 @@ python3 import_bom.py --in <BOM.xlsx> [--out <data.json>]
 
 ### 解析策略（关键：按列头文本定位，不硬编码列号）
 
-1. **区块定位**：按首列标记 `一、物料信息` / `二、工艺工序` / `三、配料表` / `三、元件清单` / `三、配方表` 找区块起始行（兼容旧版缺 `三、`）。
-2. **列定位**：读取各区块表头行，用**表头文本 → 列号**映射（而非固定 A–E），缺列则视为「旧版，取默认」。
-3. **industry 推断**（V4 新增）：
+1. **区块定位**：按首列标记 `一、物料信息` / `二、工艺工序` / `三、配料表` / `三、元件清单` / `三、配方表` / `三、面料辅料清单` / `三、家具物料清单` / `成本明细`（有行业视图时为 `四、成本明细`，逆向按关键字 `成本明细` 统一识别）找区块起始行（兼容旧版缺 `三、`）。
+2. **列定位**：读取各区块表头行，用**表头文本 → 列号**映射（而非固定 A–E），缺列则视为「旧版，取默认」。电子区块按 14 列识别（`max_col=14`），化工区块按 13 列识别（`max_col=13`），其余按 8 列（默认 `max_col=8`）；旧 8 列电子/化工 Excel 仍兼容。
+3. **industry 推断**（V4 新增，V5 扩充）：
    - 有「三、元件清单」→ `industry = "电子"`
    - 有「三、配方表」→ `industry = "化工"`
    - 有「三、配料表」→ `industry = "食品"`
+   - 有「三、面料辅料清单」→ `industry = "纺织"`
+   - 有「三、家具物料清单」→ `industry = "家具"`
    - 无「三、」区块 → 按 `category` 推断（`CATEGORY_TO_INDUSTRY.get(category, "通用")`）
 
 ### 列头映射表
@@ -324,10 +425,35 @@ python3 import_bom.py --in <BOM.xlsx> [--out <data.json>]
 | **元件清单** | 型号(Part#) / 型号 | → `material.part_number` | `""` |
 | **元件清单** | 封装(Footprint) / 封装 | → `material.footprint` | `""` |
 | **元件清单** | RoHS | → `material.rohs` | `""` |
+| **元件清单** | 制造商 | → `material.manufacturer`（V5 扩列） | `""` |
+| **元件清单** | 容差 | → `material.tolerance`（V5 扩列） | `""` |
+| **元件清单** | 额定功率 | → `material.rated_power`（V5 扩列） | `""` |
+| **元件清单** | 额定电压 | → `material.rated_voltage`（V5 扩列） | `""` |
+| **元件清单** | 替代料 | → `material.alternate`（V5 扩列） | `""` |
+| **元件清单** | 封装温度 | → `material.reflow_temp`（V5 扩列） | `""` |
 | **配方表** | 物料名称 | （仅用于匹配） | — |
 | **配方表** | CAS号 / CAS | → `material.cas_number` | `""` |
 | **配方表** | 含量(%) / 含量 | → `material.concentration`（float） | `""` |
 | **配方表** | GHS标识 / GHS | → `material.ghs_hazard` | `""` |
+| **配方表** | 纯度 | → `material.purity`（V5 扩列） | `""` |
+| **配方表** | 物态 | → `material.physical_state`（V5 扩列） | `""` |
+| **配方表** | 闪点 | → `material.flash_point`（V5 扩列） | `""` |
+| **配方表** | 存储条件 | → `material.storage_condition`（V5 扩列） | `""` |
+| **配方表** | 危险等级 | → `material.hazard_class`（V5 扩列） | `""` |
+| **面料辅料清单** | 物料名称 | （仅用于匹配） | — |
+| **面料辅料清单** | 成分比例 | → `material.composition`（V5） | `""` |
+| **面料辅料清单** | 纱支 | → `material.yarn_count`（V5） | `""` |
+| **面料辅料清单** | 克重(g/m²) | → `material.fabric_weight`（V5） | `""` |
+| **面料辅料清单** | 幅宽 | → `material.width`（V5） | `""` |
+| **面料辅料清单** | 色号 | → `material.color_no`（V5） | `""` |
+| **家具物料清单** | 物料名称 | （仅用于匹配） | — |
+| **家具物料清单** | 材质等级 | → `material.material_grade`（V5） | `""` |
+| **家具物料清单** | 尺寸规格 | → `material.spec_size`（V5） | `""` |
+| **家具物料清单** | 表面处理 | → `material.surface_treatment`（V5） | `""` |
+| **家具物料清单** | 色号/花色 / 色号 | → `material.color_no`（V5） | `""` |
+| **成本明细** | 物料名称 | （仅用于匹配） | — |
+| **成本明细** | 单价 | → `material.unit_price`（V5，float） | `""` |
+| **成本明细** | 币种 | → `material.currency`（V5，缺省 人民币(CNY)） | `""` |
 | 工序 | 工序编号 | step_no | — |
 | 工序 | 工序名称 | name | — |
 | 工序 | 工序说明 | desc | `""` |
@@ -343,7 +469,7 @@ python3 import_bom.py --in <BOM.xlsx> [--out <data.json>]
 |------|----------|------|
 | `product_name` | 扫描含 `产品名称` 的单元格，提取冒号后内容 | `""` |
 | `category` | 扫描含 `产品类别` 的单元格，提取冒号后内容 | `其他` |
-| `industry` | 从「三、」区块标记推断（有元件清单→电子，有配方表→化工，有配料表→食品，无→按 category 推断） | 按 category 推断 |
+| `industry` | 从「三、」区块标记推断（有元件清单→电子，有配方表→化工，有配料表→食品，有面料辅料清单→纺织，有家具物料清单→家具，无→按 category 推断） | 按 category 推断 |
 | `output_rate` | 扫描含 `全产品出品率` 的单元格，提取数字（去 `%`）转 float | `""` |
 | `version` | 含 `版本号` | `V1.0` |
 | `date` | 含 `生成日期` | `""` |
@@ -360,14 +486,17 @@ python3 import_bom.py --in <BOM.xlsx> [--out <data.json>]
 - **合计用量行**：首列含「合计」→ 跳过（不读、不回写）。
 - **物料名称来源**：取 `_map_header` 映射的「物料名称」列（V3+ 为 B 列；旧版为 A 列）。
 - **「三、配料表」过敏原回收（V3 既有，仅食品）**：定位到区块后，读表头映射「物料名称」与「过敏原」列，逐行按物料名匹配已解析 `materials` 中同名项，回写 `allergen`。不重建配料表其他派生列。
-- **「三、元件清单」电子专属字段回收（V4 新增，仅电子）**：定位到区块后，读表头映射「物料名称」「位号(Designator)」「型号(Part#)」「封装(Footprint)」「RoHS」列，逐行按物料名匹配回写 `designator`/`part_number`/`footprint`/`rohs`。
-- **「三、配方表」化工专属字段回收（V4 新增，仅化工）**：定位到区块后，读表头映射「物料名称」「CAS号」「含量(%)」「GHS标识」列，逐行按物料名匹配回写 `cas_number`/`concentration`/`ghs_hazard`。
-- **物料对象补全**：逆向输出时，每条物料对象补全 7 个专属字段（`designator`/`footprint`/`part_number`/`rohs`/`cas_number`/`concentration`/`ghs_hazard`），未回收到的默认空串 `""`。
+- **「三、元件清单」电子专属字段回收（V4 新增，仅电子；V5 扩列至 14 列）**：定位到区块后，读表头映射「物料名称」及 `位号(Designator)`/`型号(Part#)`/`封装(Footprint)`/`RoHS`/`制造商`/`容差`/`额定功率`/`额定电压`/`替代料`/`封装温度` 列，逐行按物料名匹配回写 `designator`/`part_number`/`footprint`/`rohs` + V5 `manufacturer`/`tolerance`/`rated_power`/`rated_voltage`/`alternate`/`reflow_temp`。
+- **「三、配方表」化工专属字段回收（V4 新增，仅化工；V5 扩列至 13 列）**：定位到区块后，读表头映射「物料名称」及 `CAS号`/`含量(%)`/`GHS标识`/`纯度`/`物态`/`闪点`/`存储条件`/`危险等级` 列，逐行按物料名匹配回写 `cas_number`/`concentration`/`ghs_hazard` + V5 `purity`/`physical_state`/`flash_point`/`storage_condition`/`hazard_class`。
+- **「三、面料辅料清单」纺织专属字段回收（V5 新增，仅纺织）**：定位到区块后，读表头映射「物料名称」及 `成分比例`/`纱支`/`克重(g/m²)`/`幅宽`/`色号` 列，逐行按物料名匹配回写 `composition`/`yarn_count`/`fabric_weight`/`width`/`color_no`。
+- **「三、家具物料清单」家具专属字段回收（V5 新增，仅家具）**：定位到区块后，读表头映射「物料名称」及 `材质等级`/`尺寸规格`/`表面处理`/`色号/花色` 列，逐行按物料名匹配回写 `material_grade`/`spec_size`/`surface_treatment`/`color_no`。
+- **「成本明细」成本字段回收（V5 新增，跨行业）**：定位到「成本明细」区块（关键字匹配，兼容「三、成本明细」/「四、成本明细」）后，读表头映射「物料名称」及 `单价`/`币种` 列，逐行按物料名匹配回写 `unit_price`/`currency`；`total_price` 不回收（派生展示）。
+- **物料对象补全**：逆向输出时，每条物料对象补全全量专属字段（电子 10：`designator`/`footprint`/`part_number`/`rohs`/`manufacturer`/`tolerance`/`rated_power`/`rated_voltage`/`alternate`/`reflow_temp`；化工 8：`cas_number`/`concentration`/`ghs_hazard`/`purity`/`physical_state`/`flash_point`/`storage_condition`/`hazard_class`；纺织 5：`composition`/`yarn_count`/`fabric_weight`/`width`/`color_no`；家具 4：`material_grade`/`spec_size`/`surface_treatment`/`color_no`；成本 2：`unit_price`/`currency`），未回收到的默认空串 `""`。
 
 ### 旧版 Excel 兼容（向后兼容 R5）
 
 - 旧版 7 列 / 5 列 Excel 无「序号/占比%/过敏原/审批人/生效日期/执行标准」列 → 列头映射缺失或忽略 → 取默认。
-- 旧版无「三、元件清单」/「三、配方表」区块 → 无区块标记 → 按 category 推断 industry → 完全兼容。
+- 旧版无「三、元件清单」/「三、配方表」区块 → 无区块标记 → 按 category 推断 industry → 完全兼容；旧 8 列电子/化工 Excel 逆向仍可正确解析（按列头文本定位，max_col 向后兼容）。
 - 旧版物料无专属字段列 → 回收时未匹配到 → 专属字段默认空串。
 - 缺 `一、物料信息`/`二、工艺工序` 标记 → `PARSE_ERROR`（退出码 2）；文件不可读 → `FILE_ERROR`（退出码 2）；标题非「BOM表」仅 `WARNING`。
 
@@ -384,4 +513,4 @@ python3 scripts/import_bom.py --in BOM_2026-07-07.xlsx --out bom_back.json
 python3 scripts/generate_bom.py --data bom_back.json --out BOM_v2.xlsx
 ```
 
-逆向导入得到的 JSON 与正向输入 Schema 一致（含 `industry` + 7 个专属字段），因此可直接作为 `generate_bom.py --data` 的输入，实现「导入 → 编辑/查看 → 重新生成」的完整闭环（专属字段经回收后保留）。
+逆向导入得到的 JSON 与正向输入 Schema 一致（含 `industry` + 全量专属字段：电子 10/化工 8/纺织 5/家具 4/成本 2），因此可直接作为 `generate_bom.py --data` 的输入，实现「导入 → 编辑/查看 → 重新生成」的完整闭环（专属字段经回收后保留）。

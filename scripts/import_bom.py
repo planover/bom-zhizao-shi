@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 """
-import_bom.py - BOM智造师 配套逆向导入脚本（V4 / V3 / V2.1）
+import_bom.py - BOM智造师 配套逆向导入脚本（V5 / V4 / V3 / V2.1）
 
 读取由 generate_bom.py 生成的 BOM 表 Excel (.xlsx)，反向解析为与正向
 输入 JSON Schema 完全一致的结构化数据，便于「重新编辑已有 BOM」或闭环回写。
+
+V5 增强（相对 V4）：
+- 识别「三、面料辅料清单」/「三、家具物料清单」区块标记 → 按物料名回收
+  纺织(5)/家具(4) 专属字段；识别「成本明细」关键字 → 回收 unit_price/currency。
+- 电子「三、元件清单」区块扩列回收 10 字段（原 4 + 新 6）；
+  化工「三、配方表」区块扩列回收 8 字段（原 3 + 新 5）。
+- 推断 industry 增「三、面料辅料清单」→纺织、「三、家具物料清单」→家具。
+- 物料对象专属字段扩至 28 个唯一 JSON 键（设计文档按行业叠加计为 29 概念字段，
+  其中 color_no 在纺织/家具共用同一 JSON key，故唯一键为 28）。
 
 V4 增强（相对 V3）：
 - 识别「三、元件清单」/「三、配方表」区块标记 → 按物料名回收电子/化工专属字段。
@@ -32,8 +41,12 @@ import subprocess
 from bom_constants import CATEGORY_TO_INDUSTRY
 
 
-# V4 物料级专属字段（逆向回收后默认空串，未匹配到的保持空）
+# V5 物料级专属字段（逆向回收后默认空串，未匹配到的保持空）
+# 设计文档按行业叠加计为 29 概念字段，其中 color_no 在纺织/家具共用同一 JSON key，
+# 故此处唯一 JSON 键为 28 个：V4(7) + 纺织(5) + 家具(4) + 电子扩列(6) + 化工扩列(5) + 成本(2)，
+# 减去 color_no 重复计 1 = 28。
 _SPECIAL_FIELDS = [
+    # V4 电子/化工
     "designator",
     "footprint",
     "part_number",
@@ -41,6 +54,33 @@ _SPECIAL_FIELDS = [
     "cas_number",
     "concentration",
     "ghs_hazard",
+    # V5 纺织
+    "composition",
+    "yarn_count",
+    "fabric_weight",
+    "width",
+    "color_no",
+    # V5 家具
+    "material_grade",
+    "spec_size",
+    "surface_treatment",
+    # 注：color_no 与纺织共用，不重复列出
+    # V5 电子扩列
+    "manufacturer",
+    "tolerance",
+    "rated_power",
+    "rated_voltage",
+    "alternate",
+    "reflow_temp",
+    # V5 化工扩列
+    "purity",
+    "physical_state",
+    "flash_point",
+    "storage_condition",
+    "hazard_class",
+    # V5 成本（入库字段；total_price 为派生不入库）
+    "unit_price",
+    "currency",
 ]
 
 
@@ -167,13 +207,17 @@ def _col_of(mapping, candidates):
 
 
 def _infer_industry_from_blocks(ws, category):
-    """从「三、」区块标记推断 industry（V4 新增）。
+    """从「三、」区块标记推断 industry（V4 新增，V5 扩展）。
 
     推断优先级：
     1. 有「三、元件清单」→ 电子
     2. 有「三、配方表」→ 化工
     3. 有「三、配料表」→ 食品
-    4. 无「三、」区块 → 按 category 推断（CATEGORY_TO_INDUSTRY）
+    4. 有「三、面料辅料清单」→ 纺织
+    5. 有「三、家具物料清单」→ 家具
+    6. 无「三、」行业区块 → 按 category 推断（CATEGORY_TO_INDUSTRY）
+
+    注：成本明细（「三、成本明细」/「四、成本明细」）不参与 industry 推断。
 
     Args:
         ws: openpyxl Worksheet。
@@ -188,14 +232,19 @@ def _infer_industry_from_blocks(ws, category):
         return "化工"
     if _find_marker_row(ws, "三、配料表") is not None:
         return "食品"
+    if _find_marker_row(ws, "三、面料辅料清单") is not None:
+        return "纺织"
+    if _find_marker_row(ws, "三、家具物料清单") is not None:
+        return "家具"
     return CATEGORY_TO_INDUSTRY.get(category, "通用")
 
 
 def _recover_block_fields(ws, marker_row, field_col_map, materials):
-    """从「三、」派生区块逐行按物料名回收专属字段（V4 新增）。
+    """从「三、」派生区块逐行按物料名回收专属字段（V4 新增，V5 扩展）。
 
-    通用回收函数：适用于元件清单和配方表。
-    遇到空行（物料名称为空）或首列以「【」开头（分组标题）则停止。
+    通用回收函数：适用于元件清单、配方表、面料辅料清单、家具物料清单、成本明细。
+    遇到空行（物料名称为空）、首列以「【」开头（分组标题）或首列含「合计」
+    （成本合计行）则停止。
 
     Args:
         ws: openpyxl Worksheet。
@@ -206,12 +255,17 @@ def _recover_block_fields(ws, marker_row, field_col_map, materials):
     name_c = field_col_map.get("name")
     if not name_c:
         return
+    # 数值型字段：回收时转为 float（空则保留空串），保证闭环类型一致
+    float_fields = ("concentration", "fabric_weight", "unit_price")
     rr = marker_row + 2  # 跳过标题行和表头行
     while rr <= ws.max_row:
         nm = _str_or_empty(ws.cell(rr, name_c).value)
         if not nm:
             break
-        if str(ws.cell(rr, 1).value or "").strip().startswith("【"):
+        first_col = str(ws.cell(rr, 1).value or "").strip()
+        if first_col.startswith("【"):
+            break
+        if "合计" in first_col:
             break
         for m in materials:
             if str(m.get("name") or "").strip() == nm:
@@ -219,7 +273,7 @@ def _recover_block_fields(ws, marker_row, field_col_map, materials):
                     if field == "name" or col is None:
                         continue
                     raw_val = ws.cell(rr, col).value
-                    if field == "concentration":
+                    if field in float_fields:
                         m[field] = _to_float(raw_val)
                     else:
                         m[field] = _str_or_empty(raw_val)
@@ -296,6 +350,10 @@ def parse_bom(path):
     ingredient_row = _find_marker_row(ws, "三、配料表")
     component_row = _find_marker_row(ws, "三、元件清单")
     formula_row = _find_marker_row(ws, "三、配方表")
+    # V5: 新增纺织/家具/成本区块定位
+    textile_row = _find_marker_row(ws, "三、面料辅料清单")
+    furniture_row = _find_marker_row(ws, "三、家具物料清单")
+    cost_row = _find_marker_row(ws, "成本明细")  # 关键字兼容「三、/四、成本明细」
 
     # 物料区表头行（标记行 +1），建立列头 → 列号映射。
     material_header_row = material_row + 1
@@ -376,6 +434,12 @@ def parse_bom(path):
             break
         if formula_row is not None and r >= formula_row:
             break
+        if textile_row is not None and r >= textile_row:
+            break
+        if furniture_row is not None and r >= furniture_row:
+            break
+        if cost_row is not None and r >= cost_row:
+            break
         col1 = ws.cell(r, 1).value
         if col1 is None or str(col1).strip() == "":
             if _row_is_blank(ws, r):
@@ -426,28 +490,77 @@ def parse_bom(path):
                         break
                 rr += 1
 
-    # 三、元件清单 电子专属字段回收（V4 新增）
+    # 三、元件清单 电子专属字段回收（V4 新增，V5 扩列至 10 字段）
     if component_row is not None:
-        comp_map = _map_header(ws, component_row + 1)
+        # V5: 元件清单扩列至 14 列 A–N，表头映射须覆盖到 N 列
+        comp_map = _map_header(ws, component_row + 1, max_col=14)
         field_col_map = {
             "name": comp_map.get("物料名称"),
             "designator": _col_of(comp_map, ["位号(Designator)", "位号"]),
             "part_number": _col_of(comp_map, ["型号(Part#)", "型号"]),
             "footprint": _col_of(comp_map, ["封装(Footprint)", "封装"]),
             "rohs": _col_of(comp_map, ["RoHS"]),
+            "manufacturer": _col_of(comp_map, ["制造商"]),
+            "tolerance": _col_of(comp_map, ["容差"]),
+            "rated_power": _col_of(comp_map, ["额定功率"]),
+            "rated_voltage": _col_of(comp_map, ["额定电压"]),
+            "alternate": _col_of(comp_map, ["替代料"]),
+            "reflow_temp": _col_of(comp_map, ["封装温度"]),
         }
         _recover_block_fields(ws, component_row, field_col_map, materials)
 
-    # 三、配方表 化工专属字段回收（V4 新增）
+    # 三、配方表 化工专属字段回收（V4 新增，V5 扩列至 8 字段）
     if formula_row is not None:
-        form_map = _map_header(ws, formula_row + 1)
+        # V5: 配方表扩列至 13 列 A–M，表头映射须覆盖到 M 列
+        form_map = _map_header(ws, formula_row + 1, max_col=13)
         field_col_map = {
             "name": form_map.get("物料名称"),
             "cas_number": _col_of(form_map, ["CAS号", "CAS"]),
             "concentration": _col_of(form_map, ["含量(%)", "含量"]),
             "ghs_hazard": _col_of(form_map, ["GHS标识", "GHS"]),
+            "purity": _col_of(form_map, ["纯度"]),
+            "physical_state": _col_of(form_map, ["物态"]),
+            "flash_point": _col_of(form_map, ["闪点"]),
+            "storage_condition": _col_of(form_map, ["存储条件"]),
+            "hazard_class": _col_of(form_map, ["危险等级"]),
         }
         _recover_block_fields(ws, formula_row, field_col_map, materials)
+
+    # 三、面料辅料清单 纺织专属字段回收（V5 新增，5 字段）
+    if textile_row is not None:
+        tex_map = _map_header(ws, textile_row + 1)
+        field_col_map = {
+            "name": tex_map.get("物料名称"),
+            "composition": _col_of(tex_map, ["成分比例"]),
+            "yarn_count": _col_of(tex_map, ["纱支"]),
+            "fabric_weight": _col_of(tex_map, ["克重(g/m²)", "克重"]),
+            "width": _col_of(tex_map, ["幅宽"]),
+            "color_no": _col_of(tex_map, ["色号"]),
+        }
+        _recover_block_fields(ws, textile_row, field_col_map, materials)
+
+    # 三、家具物料清单 家具专属字段回收（V5 新增，4 字段）
+    if furniture_row is not None:
+        fur_map = _map_header(ws, furniture_row + 1)
+        field_col_map = {
+            "name": fur_map.get("物料名称"),
+            "material_grade": _col_of(fur_map, ["材质等级"]),
+            "spec_size": _col_of(fur_map, ["尺寸规格"]),
+            "surface_treatment": _col_of(fur_map, ["表面处理"]),
+            "color_no": _col_of(fur_map, ["色号/花色", "色号"]),
+        }
+        _recover_block_fields(ws, furniture_row, field_col_map, materials)
+
+    # 成本明细 成本字段回收（V5 新增，关键字「成本明细」兼容 三/四、前缀）
+    # 回收 unit_price/currency；总价(H列)为派生展示，不回收
+    if cost_row is not None:
+        cost_map = _map_header(ws, cost_row + 1)
+        field_col_map = {
+            "name": cost_map.get("物料名称"),
+            "unit_price": _col_of(cost_map, ["单价"]),
+            "currency": _col_of(cost_map, ["币种"]),
+        }
+        _recover_block_fields(ws, cost_row, field_col_map, materials)
 
     # V4: 物料对象补全专属字段默认空串（未回收到的）
     for m in materials:

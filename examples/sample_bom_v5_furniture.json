@@ -1,0 +1,109 @@
+{
+  "product_name": "实木餐椅",
+  "category": "工业品",
+  "industry": "家具",
+  "output_rate": 100,
+  "version": "V1.0",
+  "date": "2026-07-10",
+  "approver": "钱木匠",
+  "effective_date": "2026-07-25",
+  "standard": "QB/T 1951.1",
+  "materials": [
+    {
+      "name": "橡胶木主框架",
+      "unit": "件",
+      "usage": 1,
+      "yield_rate": 100,
+      "erp_code": "FZ-001",
+      "material_type": "主材",
+      "process": "S01",
+      "material_grade": "A级",
+      "spec_size": "45×45×400mm",
+      "surface_treatment": "开放漆",
+      "color_no": "FZ-001-原木"
+    },
+    {
+      "name": "多层实木板",
+      "unit": "张",
+      "usage": 1,
+      "yield_rate": 100,
+      "erp_code": "FZ-002",
+      "material_type": "板材",
+      "process": "S01",
+      "material_grade": "E0级",
+      "spec_size": "400×400×18mm",
+      "surface_treatment": "贴木皮",
+      "color_no": "FZ-002-胡桃"
+    },
+    {
+      "name": "科技木皮",
+      "unit": "m²",
+      "usage": 0.4,
+      "yield_rate": 100,
+      "erp_code": "FZ-003",
+      "material_type": "面料",
+      "process": "S01",
+      "material_grade": "AA级",
+      "spec_size": "0.5mm厚",
+      "surface_treatment": "哑光",
+      "color_no": "FZ-003-胡桃"
+    },
+    {
+      "name": "不锈钢五金件",
+      "unit": "套",
+      "usage": 1,
+      "yield_rate": 100,
+      "erp_code": "FZ-004",
+      "material_type": "五金",
+      "process": "S01",
+      "material_grade": "304",
+      "spec_size": "M6×30",
+      "surface_treatment": "拉丝",
+      "color_no": "FZ-004-银"
+    },
+    {
+      "name": "板件",
+      "unit": "套",
+      "usage": 1,
+      "yield_rate": 100,
+      "erp_code": "WIP-001",
+      "material_type": "其他",
+      "process": "S02",
+      "material_grade": "",
+      "spec_size": "",
+      "surface_treatment": "",
+      "color_no": ""
+    },
+    {
+      "name": "瓦楞包装纸箱",
+      "unit": "个",
+      "usage": 1,
+      "yield_rate": 100,
+      "erp_code": "PK-001",
+      "material_type": "其他",
+      "process": "S02",
+      "material_grade": "",
+      "spec_size": "500×500×450mm",
+      "surface_treatment": "",
+      "color_no": ""
+    }
+  ],
+  "processes": [
+    {
+      "step_no": "S01",
+      "name": "开料",
+      "desc": "板材锯切定厚",
+      "work_hours": 25,
+      "note": "留加工余量",
+      "output": "板件"
+    },
+    {
+      "step_no": "S02",
+      "name": "封边组装",
+      "desc": "封边+五金组装+包装",
+      "work_hours": 40,
+      "note": "",
+      "output": "实木餐椅"
+    }
+  ]
+}
