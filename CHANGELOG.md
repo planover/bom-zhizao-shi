@@ -1,5 +1,49 @@
 # Changelog · BOM智造师（bom-zhizao-shi）
 
+## [V6.0] - 2026-07-12
+
+> P0 全部实现：机械/包装专属派生视图正式落地（补 V5 P2 评估项）；行业模板预设填实机械/包装；成本视图双编号集合扩至 7 行业。100% 向后兼容，不新增任何阻断/软校验，不引入新依赖。
+
+### 机械专属派生视图（正向，P0-1）
+- **机械（industry=="机械"）**：新增「三、机械物料清单」（8 列 A–H），排除 `material_type ∈ {"其他"}`，按 (物料类型, 名称) 升序；表头 `序号/物料名称/图号/材质/热处理/表面处理/重量(kg)/单重(kg/件)`。
+- **机械 6 专属字段（仅 JSON、仅机械视图展示）**：`drawing_no`(图号)/`material`(材质)/`heat_treatment`(热处理)/`surface_treatment`(表面处理，与家具同名 key)/`weight`(重量,kg)/`unit_weight`(单重,kg/件，与 weight 保留不合并，主理人拍板 Q1)。
+- **不单列「物料类型」展示列**（主理人拍板 Q2）：物料类型仅用于过滤/排序，从物料区/JSON 取；视图已占满 8 列。
+- `derive_mechanical(data)` 与 V5 纺织/家具同构（`MECHANICAL_EXCLUDE={"其他"}`）。
+
+### 包装专属派生视图（正向，P0-2）
+- **包装（industry=="包装"）**：新增「三、包装物料清单」（8 列 A–H），排除 `material_type ∈ {"其他"}`，按 (物料类型, 名称) 升序；表头 `序号/物料名称/物料类型/材质/克重(g/m²)/尺寸/印刷工艺/环保标识`。
+- **包装 5 专属字段（仅 JSON、仅包装视图展示）**：`material`(材质)/`basis_weight`(克重,g/m²)/`size`(尺寸)/`print_process`(印刷工艺)/`eco_label`(环保标识，自由文本，不下沉枚举，主理人拍板 Q5)。
+- 保留「物料类型」展示列（与纺织/家具同构）；逆向仅回收 5 专属字段（`material_type` 已在物料区回收，不重复回写）。
+- `derive_packaging(data)` 同构（`PACKAGING_EXCLUDE={"其他"}`）。
+
+### 成本视图双编号扩集（P1-2）
+- `INDUSTRY_VIEW_SET` 由 5 行业扩为 **7 行业**（含 机械/包装）；机械/包装带成本时生成「**四、成本明细**」，否则「三、成本明细」（预期行为变更：V5 旧机械/包装带成本为「三、」，数据一致、逆向兼容）。
+- 旧 Excel 逆向仍以关键字 `成本明细` 回收 `unit_price`/`currency`，无需迁移。
+
+### 行业模板预设填实机械/包装（P1-1，仅交互引导）
+- `INDUSTRY_TEMPLATES["机械"]`：`material_types=["零部件","标准件","型材","铸件","焊接件","其他"]`、`standard="GB/T 1804-2000"`、`special_fields=["drawing_no","material","heat_treatment","surface_treatment","weight","unit_weight"]`、5 步工序模板。
+- `INDUSTRY_TEMPLATES["包装"]`：`material_types=["纸箱","缓冲","标签","胶带","薄膜","其他"]`、`standard="GB/T 6543-2008"`、`special_fields=["material","basis_weight","size","print_process","eco_label"]`、4 步工序模板。
+- `INDUSTRY_STANDARD` 增 机械=`GB/T 1804-2000`、包装=`GB/T 6543-2008`。
+- 交互层只读，不写入新 JSON 结构字段，向后兼容。
+
+### 逆向导入增强（import_bom.py，T02）
+- 区块定位新增 机械物料清单/包装物料清单 marker；`_infer_industry_from_blocks` 增 机械/包装 推断。
+- 机械按 6 字段（`drawing_no/material/heat_treatment/surface_treatment/weight/unit_weight`）回收，`weight/unit_weight` 转 float；包装按 5 字段（`material/basis_weight/size/print_process/eco_label`）回收，`basis_weight` 转 float。
+- `_SPECIAL_FIELDS` 由 V5 实际 **28** 个唯一 JSON 键扩至 **37** 个（V6 净增 9：drawing_no/material/heat_treatment/weight/unit_weight/basis_weight/size/print_process/eco_label；material 与包装/机械同名、surface_treatment 与家具同名各只计一次）。
+- 旧 Excel 无新区块 marker → 不回收新字段，全部默认空；完全兼容。
+
+### 软校验（V6 不新增任何阻断/软校验）
+- 沿用 V4/V5 既有 V8/W1/H1/W2/W3/含量和校验；机械/包装所有新增字段均不设软校验（主理人拍板，最低回归风险）。
+
+### 文档与示例
+- `SKILL.md`/`README.md`/`references/bom-spec.md`：增量更新机械/包装字段、专属视图、模板预设、逆向规则、已知限制。
+- `references/bom-demo.svg`：追加机械物料清单/包装物料清单/机械(包装)带成本「四、成本明细」示意图。
+- `references/mechanical-packaging-draft-v5.md`：状态由"评估草案（不实现）"更新为"V6 已正式落地"。
+- `examples/`：新增 `sample_bom_v6_mechanical`/`sample_bom_v6_packaging`/`sample_bom_v6_mechanical_cost` 共 3 组 JSON（验证视图过滤 + 成本双编号）。
+- `tests/test_bom_v5.py`：`test_v5_t26` 的 `_SPECIAL_FIELDS` 断言由 `==28` 改为 `==37`（集合扩至 37）。
+
+---
+
 ## [V5.0] - 2026-07-11
 
 > P1 全部实现：成本视图 + 行业模板预设；纺织/家具专属派生视图；电子/化工扩列并入单区块。100% 向后兼容，不新增任何阻断/软校验。机械/包装本期仅出评估草案（不实现）。

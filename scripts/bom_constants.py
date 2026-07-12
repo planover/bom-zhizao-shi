@@ -11,6 +11,8 @@ generate_bom.py 与 import_bom.py 均从此模块导入，保持单一真相源�
 V5 增量：新增纺织/家具过滤集与建议类型、导出 EDIBLE_LIST、INDUSTRY_STANDARD
 增 纺织=FZ/T 80004 与 家具=QB/T 1951.1、新增 INDUSTRY_TEMPLATES 行业模板预设
 （仅交互引导，不写入新 JSON 结构字段）。
+V6 增量：新增机械/包装过滤集与建议类型、INDUSTRY_STANDARD 增 机械=GB/T 1804-2000
+与 包装=GB/T 6543-2008、INDUSTRY_TEMPLATES 机械/包装由空模板填实（仅交互引导）。
 
 纯 Python 标准库模块，无第三方依赖。
 """
@@ -41,13 +43,15 @@ FORMULA_TYPES = ["主料", "溶剂", "催化剂", "添加剂", "包材", "其他
 # 配方表过滤排除集
 FORMULA_EXCLUDE = {"包材"}
 
-# === 执行标准行业建议（P1 / V5 增量） ===
+# === 执行标准行业建议（P1 / V5 增量 / V6 增量） ===
 INDUSTRY_STANDARD = {
     "食品": "GB 7718-2025",
     "电子": "GB/T 39560",
     "化工": "GB/T 16483-2008",
     "纺织": "FZ/T 80004",      # V5 新增
     "家具": "QB/T 1951.1",     # V5 新增
+    "机械": "GB/T 1804-2000",  # V6 新增（一般公差，默认可改）
+    "包装": "GB/T 6543-2008",  # V6 新增（运输包装用瓦楞纸箱，默认可改）
 }
 
 # === 食品配料表过滤集（从 generate_bom.py 迁入，单一真相源） ===
@@ -67,6 +71,18 @@ TEXTILE_EXCLUDE = {"其他"}
 FURNITURE_TYPES = ["主材", "板材", "辅材", "五金", "面料", "其他"]
 # 家具物料清单过滤排除集（material_type 在此集合内的物料不进家具物料清单）
 FURNITURE_EXCLUDE = {"其他"}
+
+# === V6 机械行业 ===
+# 机械物料类型建议值（交互引导，非强制枚举）
+MECHANICAL_TYPES = ["零部件", "标准件", "型材", "铸件", "焊接件", "其他"]
+# 机械物料清单过滤排除集（material_type 在此集合内的物料不进机械物料清单）
+MECHANICAL_EXCLUDE = {"其他"}
+
+# === V6 包装行业 ===
+# 包装物料类型建议值（交互引导，非强制枚举）
+PACKAGING_TYPES = ["纸箱", "缓冲", "标签", "胶带", "薄膜", "其他"]
+# 包装物料清单过滤排除集（material_type 在此集合内的物料不进包装物料清单）
+PACKAGING_EXCLUDE = {"其他"}
 
 # === 过敏原八大类 + 其他（GB 7718-2025），用于 W1 软校验 ===
 ALLERGEN_SET = {
@@ -190,11 +206,47 @@ INDUSTRY_TEMPLATES = {
         "special_fields": ["allergen"],
         "preset_processes": [],
     },
-    # 通用/机械/包装：空模板（保持通用兜底，不预置专属字段与工序）
+    # 通用：空模板（保持通用兜底，不预置专属字段与工序）
     "通用": {"material_types": [], "standard": "", "special_fields": [],
              "preset_processes": []},
-    "机械": {"material_types": [], "standard": "", "special_fields": [],
-             "preset_processes": []},
-    "包装": {"material_types": [], "standard": "", "special_fields": [],
-             "preset_processes": []},
+    # V6 机械：填实模板（仅交互引导，不写入 JSON 结构；special_fields 含与家具同名的 surface_treatment）
+    "机械": {
+        "material_types": MECHANICAL_TYPES,
+        "standard": "GB/T 1804-2000",
+        "special_fields": [
+            "drawing_no", "material", "heat_treatment",
+            "surface_treatment", "weight", "unit_weight",
+        ],
+        "preset_processes": [
+            {"step_no": "S01", "name": "下料", "desc": "切割/锯切下料",
+             "output": "坯料"},
+            {"step_no": "S02", "name": "机加工", "desc": "车铣钻加工",
+             "output": "加工件"},
+            {"step_no": "S03", "name": "热处理", "desc": "淬火/回火等",
+             "output": "热处理件"},
+            {"step_no": "S04", "name": "表面处理", "desc": "镀锌/喷塑/阳极氧化",
+             "output": "表面处理件"},
+            {"step_no": "S05", "name": "装配", "desc": "零部件组装",
+             "output": "成品"},
+        ],
+    },
+    # V6 包装：填实模板（仅交互引导，不写入 JSON 结构）
+    "包装": {
+        "material_types": PACKAGING_TYPES,
+        "standard": "GB/T 6543-2008",
+        "special_fields": [
+            "material", "basis_weight", "size",
+            "print_process", "eco_label",
+        ],
+        "preset_processes": [
+            {"step_no": "S01", "name": "设计制版", "desc": "版面设计与制版",
+             "output": "印版"},
+            {"step_no": "S02", "name": "印刷", "desc": "胶印/柔印/数码印刷",
+             "output": "印刷品"},
+            {"step_no": "S03", "name": "模切成型", "desc": "模切与成型",
+             "output": "成型包装件"},
+            {"step_no": "S04", "name": "检验", "desc": "外观与性能检验",
+             "output": "成品"},
+        ],
+    },
 }

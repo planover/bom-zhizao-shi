@@ -1,5 +1,16 @@
 # 机械 / 包装行业专属视图评估草案（BOM智造师 V5 · P2 评估）
 
+> ## ✅ V6 状态：已实现（2026-07-13）
+> 本文档原属 **V5 P2 评估项（仅评估、不实现）**。在 **V6（2026-07-13）** 中，机械 / 包装行业专属视图已正式落地，遵循本草案字段建议并做主理人拍板调整（Q1–Q5）。
+> - 机械：「三、机械物料清单」8 列（无「物料类型」展示列），机械 6 专属字段 `drawing_no`/`material`/`heat_treatment`/`surface_treatment`/`weight`/`unit_weight`（weight 与 unit_weight 双字段保留不合并，Q1）。
+> - 包装：「三、包装物料清单」8 列（保留「物料类型」展示列），包装 5 专属字段 `material`/`basis_weight`/`size`/`print_process`/`eco_label`（eco_label 自由文本无枚举，Q5）。
+> - `INDUSTRY_VIEW_SET` 由 V5 的 5 行业扩至 **7 行业**（新增机械/包装），机械/包装带 `unit_price` 时成本视图编号为「四、成本明细」。
+> - 逆向 `_SPECIAL_FIELDS` 由 28 唯一键扩至 **37 唯一键**，`float_fields` 增 `weight`/`unit_weight`/`basis_weight`。
+> - 正式设计见 `incremental-design-v6.md`、需求见 `incremental-prd-v6.md`；实现与文档见 `scripts/generate_bom.py` / `scripts/import_bom.py` / `scripts/bom_constants.py` / `README.md` / `references/bom-spec.md` / `references/bom-demo.svg`。
+> 以下正文保留 V5 评估原貌，**仅供历史追溯**，实际行为以 V6 文档与代码为准。
+
+---
+
 > 本文档为 V5 增量中 **P2 评估项** 的落盘记录：**机械 / 包装行业专属视图本期仅评估、不实现**。
 > 对应设计文档 `references/incremental-design-v5.md` §8.1。
 > 作者：软件工程师（寇豆码）  |  日期：2026-07-10  |  范围：generate_bom.py / import_bom.py / bom_constants.py（仅评估，无代码变更）

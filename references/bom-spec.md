@@ -1,8 +1,10 @@
-# BOM 表结构与输入规范（bom-zhizao-shi · V5 / V4 / V3 / V2.1）
+# BOM 表结构与输入规范（bom-zhizao-shi · V6 / V5 / V4 / V3 / V2.1）
 
 本文件供 `scripts/generate_bom.py` 与汇总序列化阶段参考，并作为 `scripts/import_bom.py` 逆向解析的契约基线。
 
 > V5 变更摘要：行业专属派生视图扩充——纺织「三、面料辅料清单」（8 列 A–H）、家具「三、家具物料清单」（8 列 A–H）；电子「三、元件清单」扩列至 **14 列（A–N）**（新增 manufacturer/tolerance/rated_power/rated_voltage/alternate/reflow_temp 6 个工程/合规字段，共 10 专属字段）；化工「三、配方表」扩列至 **13 列（A–M）**（新增 purity/physical_state/flash_point/storage_condition/hazard_class 5 个 SDS 字段，共 8 专属字段）；跨行业「成本明细」视图（有行业视图时「四、成本明细」，否则「三、成本明细」，8 列含单价/币种/总价派生 + 成本合计行），物料级新增 `unit_price`/`currency`（currency 默认 人民币(CNY)）；新增行业模板预设 `INDUSTRY_TEMPLATES`（仅交互引导，不写新 JSON 结构）。**V5 不新增任何阻断/软校验**（沿用 V4 同构排除提示）。机械/包装本期仅出评估草案（见 `mechanical-packaging-draft-v5.md`），维持通用兜底。
+>
+> V6 变更摘要（机械 / 包装行业正式落地，最小变更、100% 向后兼容，不新增任何阻断/软校验）：行业专属派生视图扩充——机械「三、机械物料清单」（8 列 A–H，无「物料类型」展示列，仅用于过滤/排序）、包装「三、包装物料清单」（8 列 A–H，保留「物料类型」展示列）；机械 6 专属字段 `drawing_no`/`material`/`heat_treatment`/`surface_treatment`/`weight`/`unit_weight`（weight 与 unit_weight 双字段保留不合并，Q1 拍板）、包装 5 专属字段 `material`/`basis_weight`/`size`/`print_process`/`eco_label`（`material` 机械/包装同名 key；`surface_treatment` 家具 V5 已存在；`eco_label` 自由文本无受限枚举，Q5 拍板）；跨行业「成本明细」双编号集合 `INDUSTRY_VIEW_SET` 由 V5 的 5 行业扩为 **7 行业**（新增机械/包装），机械/包装带 `unit_price` 时成本视图编号为「四、成本明细」；机械 `standard` 默认 `GB/T 1804-2000`、包装 `standard` 默认 `GB/T 6543-2008`；机械/包装类型枚举与排除集 `MECHANICAL_TYPES`/`MECHANICAL_EXCLUDE={"其他"}`/`PACKAGING_TYPES`/`PACKAGING_EXCLUDE={"其他"}`；逆向 `_SPECIAL_FIELDS` 由 28 唯一键扩至 **37 唯一键**（净增 9：`drawing_no`/`material`(同名复用)/`heat_treatment`/`surface_treatment`(家具已存在)/`weight`/`unit_weight`/`basis_weight`/`size`/`print_process`/`eco_label` 去重后净增 9），`float_fields` 增 `weight`/`unit_weight`/`basis_weight` 使逆向解析为 float；新增机械 6 / 包装 5 字段回收分支与 `_infer_industry_from_blocks` 的「三、机械物料清单」→机械、「三、包装物料清单」→包装 识别。P2-1/P2-2 本期不实现。机械/包装专属字段仅存 JSON、仅专属视图展示，物料区 8 列（A–H）永不变。
 >
 > V4 变更摘要：新增 BOM 级可选字段 `industry`（8 值枚举，选填，默认按 `category` 推断）；新增物料级专属字段——电子行业 `designator` / `footprint` / `part_number` / `rohs`，化工行业 `cas_number` / `concentration` / `ghs_hazard`；新增行业专属派生视图——电子「三、元件清单」（8 列，含 RoHS 红黄字标记），化工「三、配方表」（8 列，含含量(%) 数字格式）；配料表触发条件从 `category=="食品"` 改为 `industry=="食品"`（含推断，行为不变）；新增软校验 V8（industry 枚举）/ W2（RoHS 未标）/ W3（CAS/GHS 未填）/ 含量(%) 列和校验（±5%）；共享常量迁入 `scripts/bom_constants.py`（EDIBLE / ALLERGEN_SET / ALLERGEN_HINTS / V4 新常量）。
 >
@@ -101,6 +103,38 @@
   ]
 }
 ```
+```json
+{
+  "industry": "机械",
+  "materials": [
+    {"name": "传动轴", "unit": "件", "usage": 2, "yield_rate": 100,
+     "material_type": "零部件",
+     "drawing_no": "DW-2026-011", "material": "45#钢",
+     "heat_treatment": "淬火+回火", "surface_treatment": "镀锌",
+     "weight": "1.20", "unit_weight": "0.60"},
+    {"name": "密封圈", "unit": "件", "usage": 4, "yield_rate": 100,
+     "material_type": "标准件",
+     "drawing_no": "", "material": "丁腈橡胶",
+     "heat_treatment": "", "surface_treatment": "",
+     "weight": "0.01", "unit_weight": "0.01"}
+  ]
+}
+```
+```json
+{
+  "industry": "包装",
+  "materials": [
+    {"name": "外箱", "unit": "个", "usage": 1, "yield_rate": 100,
+     "material_type": "纸箱",
+     "material": "瓦楞纸", "basis_weight": "200",
+     "size": "400×300×200mm", "print_process": "胶印", "eco_label": "FSC"},
+    {"name": "缓冲泡棉", "unit": "张", "usage": 2, "yield_rate": 100,
+     "material_type": "缓冲",
+     "material": "EPE", "basis_weight": "30",
+     "size": "380×280mm", "print_process": "", "eco_label": "可回收"}
+  ]
+}
+```
 
 ### 字段约束总表
 
@@ -121,7 +155,7 @@
 | `materials[].usage` | number | 必填 | `> 0` | 未变 |
 | `materials[].yield_rate` | number | 必填 | `0 < 值 ≤ 100` | 未变（R2） |
 | `materials[].erp_code` | string | 选填 | 默认 `""` | 未变 |
-| `materials[].material_type` | string(enum) | 选填 | ∈ {原料,添加剂,香精香料,包材,其他}（食品）；{电阻,电容,IC,连接器,二极管,三极管,晶振,其他}（电子）；{主料,溶剂,催化剂,添加剂,包材,其他}（化工）；{面料,辅料,纱线,印染,五金,其他}（纺织）；{主材,板材,辅材,五金,面料,其他}（家具）；默认 `其他` | 沿用 V2（R4 过滤用）；V5 专属视图过滤依据（电子/化工/纺织/家具均排除"其他"类；化工额外排除"包材"类） |
+| `materials[].material_type` | string(enum) | 选填 | ∈ {原料,添加剂,香精香料,包材,其他}（食品）；{电阻,电容,IC,连接器,二极管,三极管,晶振,其他}（电子）；{主料,溶剂,催化剂,添加剂,包材,其他}（化工）；{面料,辅料,纱线,印染,五金,其他}（纺织）；{主材,板材,辅材,五金,面料,其他}（家具）；{零部件,标准件,型材,铸件,焊接件,其他}（机械）；{纸箱,缓冲,标签,胶带,薄膜,其他}（包装）；默认 `其他` | 沿用 V2（R4 过滤用）；V5/V6 专属视图过滤依据（电子/化工/纺织/家具/机械/包装均排除"其他"类；化工额外排除"包材"类；机械与包装 `MECHANICAL_EXCLUDE`/`PACKAGING_EXCLUDE` 均为 `{"其他"}`） |
 | `materials[].process` | string | 选填 | 引用有效 `step_no`；默认 `""` | 沿用 V2 |
 | `materials[].allergen` | string | **选填（V3 新增）** | 逗号分隔标签，∈ 八大类+其他；默认 `""` | 仅食品配料表展示；软校验 W1/H1 |
 | `materials[].designator` | string | **选填（V4 新增）** | 默认 `""`；电子元件位号（如 R1/C3/U5） | 仅电子元件清单展示 |
@@ -152,6 +186,16 @@
 | `materials[].surface_treatment` | string | **选填（V5 新增）** | 默认 `""`；表面处理（如 烤漆） | 仅家具物料清单展示 |
 | `materials[].unit_price` | number | **选填（V5 新增）** | 默认 `""`（不填则不进成本视图）；数值 | 仅成本明细展示；`total_price` 不入库、按 `用量×单价` 实时派生 |
 | `materials[].currency` | string | **选填（V5 新增）** | 默认 `人民币(CNY)`；缺省按人民币(CNY)处理 | 仅成本明细展示 |
+| `materials[].drawing_no` | string | **选填（V6 新增）** | 默认 `""`；零部件图纸编号（如 DW-2026-011） | 仅机械物料清单展示 |
+| `materials[].material` | string | **选填（V6 新增）** | 默认 `""`；材质（机械如 45#钢/铝合金6061，包装如 瓦楞纸/PET）；机械与包装同名 key（JSON 仅一份） | 仅机械/包装物料清单展示 |
+| `materials[].heat_treatment` | string | **选填（V6 新增）** | 默认 `""`；热处理（如 淬火+回火/退火/无） | 仅机械物料清单展示 |
+| `materials[].surface_treatment` | string | **选填（V5 家具/V6 机械 复用）** | 默认 `""`；表面处理（如 镀锌/喷塑/阳极氧化）；家具 V5 已存在，机械 V6 同 key 复用 | 家具物料清单 / 机械物料清单展示 |
+| `materials[].weight` | number | **选填（V6 新增）** | 默认 `""`；单件总重量（kg）；数值 | 仅机械物料清单展示；与 `unit_weight` 双字段保留不合并（Q1 拍板） |
+| `materials[].unit_weight` | number | **选填（V6 新增）** | 默认 `""`；单位重量（kg/件）；数值 | 仅机械物料清单展示 |
+| `materials[].basis_weight` | number | **选填（V6 新增）** | 默认 `""`；纸张/薄膜克重（g/m²）；数值 | 仅包装物料清单展示 |
+| `materials[].size` | string | **选填（V6 新增）** | 默认 `""`；尺寸（如 400×300×200mm） | 仅包装物料清单展示 |
+| `materials[].print_process` | string | **选填（V6 新增）** | 默认 `""`；印刷工艺（如 胶印/柔印/数码印刷） | 仅包装物料清单展示 |
+| `materials[].eco_label` | string | **选填（V6 新增）** | 默认 `""`；环保标识（如 FSC/可回收/可降解）；自由文本，无受限枚举（Q5 拍板） | 仅包装物料清单展示 |
 | `processes[]` | array | 选填 | 可 0 条 | 未变 |
 | `processes[].step_no` | string | 必填 | 唯一不重复 | 未变 |
 | `processes[].name` | string | 必填 | 非空 | 未变 |
@@ -187,7 +231,7 @@
 ### 向后兼容默认（R5，旧数据 / 旧文件）
 
 - 旧 JSON 缺 `industry` → 按 `category` 推断（行为零变化）。
-- 旧 JSON 缺物料级专属字段（`designator`/`footprint`/`part_number`/`rohs`/`cas_number`/`concentration`/`ghs_hazard` → V4；V5 电子 10/化工 8/纺织 5/家具 4/成本 2）→ 默认空串 `""`，专属视图对应列留空。
+- 旧 JSON 缺物料级专属字段（`designator`/`footprint`/`part_number`/`rohs`/`cas_number`/`concentration`/`ghs_hazard` → V4；V5 电子 10/化工 8/纺织 5/家具 4/成本 2；V6 机械 6：`drawing_no`/`material`/`heat_treatment`/`surface_treatment`/`weight`/`unit_weight`，包装 5：`material`/`basis_weight`/`size`/`print_process`/`eco_label`）→ 默认空串 `""`，专属视图对应列留空。
 - 旧 JSON 缺 `unit_price`/`currency` → `""`/默认人民币(CNY)，不生成成本视图（行为零变化）。
 - 旧 JSON 缺 `approver` / `effective_date` / `standard` → `""`（正向行 5 留空）。
 - 旧 JSON 缺 `materials[].allergen` → `""`（配料表过敏原列留空）。
@@ -204,11 +248,11 @@
 | 键 | 用途 | 说明 |
 |----|------|------|
 | `material_types` | 阶段一物料类型下拉建议值 | 非强制枚举；如电子 `["电阻","电容","IC","连接器","二极管","三极管","晶振","其他"]` |
-| `standard` | 执行标准自动预填 | 可改；如食品 `GB 7718-2025`、电子 `GB/T 39560`、化工 `GB/T 16483-2008`、纺织 `FZ/T 80004`、家具 `QB/T 1951.1` |
-| `special_fields` | 阶段一物料模板动态追加的专属字段行 | 电子 10 / 化工 8 / 纺织 5 / 家具 4 / 食品 1(过敏原) 个；通用/机械/包装为空 |
-| `preset_processes` | 可选「一键载入工序模板」 | 阶段二工序预填（仅引导，不写新结构）；通用/机械/包装/食品为空 |
+| `standard` | 执行标准自动预填 | 可改；如食品 `GB 7718-2025`、电子 `GB/T 39560`、化工 `GB/T 16483-2008`、纺织 `FZ/T 80004`、家具 `QB/T 1951.1`、机械 `GB/T 1804-2000`、包装 `GB/T 6543-2008` |
+| `special_fields` | 阶段一物料模板动态追加的专属字段行 | 电子 10 / 化工 8 / 纺织 5 / 家具 4 / 机械 6 / 包装 5 / 食品 1(过敏原) 个；通用为空 |
+| `preset_processes` | 可选「一键载入工序模板」 | 阶段二工序预填（仅引导，不写新结构）；机械 5 步 / 包装 4 步 / 通用/食品/电子/化工/纺织/家具为空 |
 
-> 交互约束（最小变更）：阶段一物料模板、物料类型下拉、执行标准预填、一键载入工序，**全部由交互层按 `INDUSTRY_TEMPLATES[industry]` 动态生成**；生成脚本仍按既有 `industry` + 专属字段渲染，JSON Schema 零新增。机械/包装本期为空模板（维持通用兜底），其正式预置留待 P2（见 `mechanical-packaging-draft-v5.md`）。
+> 交互约束（最小变更）：阶段一物料模板、物料类型下拉、执行标准预填、一键载入工序，**全部由交互层按 `INDUSTRY_TEMPLATES[industry]` 动态生成**；生成脚本仍按既有 `industry` + 专属字段渲染，JSON Schema 零新增。V6 起机械/包装已由空模板升级为正式预置（`MECHANICAL_TYPES`/`PACKAGING_TYPES` 物料类型下拉、`GB/T 1804-2000`/`GB/T 6543-2008` 执行标准、`drawing_no`/`material`/`heat_treatment`/`surface_treatment`/`weight`/`unit_weight`(机械 6) 与 `material`/`basis_weight`/`size`/`print_process`/`eco_label`(包装 5) 专属字段行、机械 5 步/包装 4 步工序模板），见 `mechanical-packaging-draft-v5.md`（V6 已实现）。
 
 ---
 
@@ -225,10 +269,12 @@
 | 化工 | 配方表 | `三、配方表` | **13 列（A–M，V5 扩列）** | `industry == "化工"` |
 | 纺织 | 面料辅料清单 | `三、面料辅料清单` | 8 列（A–H，V5 新增） | `industry == "纺织"` |
 | 家具 | 家具物料清单 | `三、家具物料清单` | 8 列（A–H，V5 新增） | `industry == "家具"` |
-| 任意（含 通用/机械/包装） | 成本明细 | `四、成本明细`（有行业视图时）/ `三、成本明细`（无行业视图时） | 8 列（A–H） | 任一物料 `unit_price` 非空 |
+| 机械 | 机械物料清单 | `三、机械物料清单` | 8 列（A–H，V6 新增，无「物料类型」展示列） | `industry == "机械"` |
+| 包装 | 包装物料清单 | `三、包装物料清单` | 8 列（A–H，V6 新增，保留「物料类型」展示列） | `industry == "包装"` |
+| 任意（含 通用） | 成本明细 | `四、成本明细`（有行业视图时，含食品/电子/化工/纺织/家具/机械/包装）/ `三、成本明细`（无行业视图时，仅通用） | 8 列（A–H） | 任一物料 `unit_price` 非空 |
 
 > 配料表触发条件从 V3 的 `category=="食品"` 改为 V4 的 `industry=="食品"`（含推断），行为不变。
-> V5 成本视图为跨行业视图：有行业专属视图（食品/电子/化工/纺织/家具）→ 编号为「四、成本明细」（位于行业视图之后）；否则 →「三、成本明细」（位于工序区之后）。
+> V6 成本视图为跨行业视图（`INDUSTRY_VIEW_SET = {食品,电子,化工,纺织,家具,机械,包装}` 共 7 行业）：有行业专属视图（食品/电子/化工/纺织/家具/机械/包装）→ 编号为「四、成本明细」（位于行业视图之后）；否则（仅通用）→「三、成本明细」（位于工序区之后）。V5 的 `INDUSTRY_VIEW_SET` 为 5 行业，V6 扩至 7 行业（新增机械/包装）；旧 V5 机械/包装带 `unit_price` 的 Excel 成本块编号由「三」变为「四」为预期行为变更（数据一致，逆向按关键字 `成本明细` 兼容前缀识别，无需迁移）。
 
 ### ASCII 框图（食品类 — 配料表，沿用 V3）
 
@@ -357,13 +403,21 @@
 - **「三、家具物料清单」（仅 `industry=="家具"`，工序区后空行起，★V5 新增）**：派生区块。表头 **8 列**（A–H）`序号|物料名称|物料类型|材质等级|尺寸规格|表面处理|用量|色号/花色`。
   - 内容为 `derive_furniture()` 结果：排除 `material_type ∈ {"其他"}` 的物料，按 `(material_type, name)` 升序排序。
   - 非家具类**不输出此区块**。逆向按物料名回收 `material_grade`/`spec_size`/`surface_treatment`/`color_no`。
-- **「成本明细」（跨行业，任一物料 `unit_price` 非空即生成，★V5 新增）**：派生区块。有行业专属视图（食品/电子/化工/纺织/家具）→ 标题 `四、成本明细`（A–H 合并，位于行业视图之后）；否则 → 标题 `三、成本明细`（位于工序区之后）。表头 **8 列**（A–H）`序号|物料名称|物料类型|用量|单位|单价|币种|总价`。
+- **「三、机械物料清单」（仅 `industry=="机械"`，工序区后空行起，★V6 新增）**：派生区块。表头 **8 列**（A–H）`序号|物料名称|图号|材质|热处理|表面处理|重量(kg)|单重(kg/件)`。**不单列「物料类型」展示列**（物料类型仅用于过滤/排序，主理人拍板 Q2）。
+  - 内容为 `derive_mechanical()` 结果：排除 `material_type ∈ {"其他"}` 的物料（毛坯/备品等），按 `(material_type, name)` 升序排序。
+  - `重量(kg)` 取 `weight`、`单重(kg/件)` 取 `unit_weight`（均为 float，数字格式 `0.00`；两字段保留不合并，主理人拍板 Q1）。
+  - 非机械类**不输出此区块**。逆向按物料名回收 `drawing_no`/`material`/`heat_treatment`/`surface_treatment`/`weight`/`unit_weight`（机械视图无「物料类型」展示列，故不回收 `material_type` 列；`surface_treatment` 与家具同 key）。
+- **「三、包装物料清单」（仅 `industry=="包装"`，工序区后空行起，★V6 新增）**：派生区块。表头 **8 列**（A–H）`序号|物料名称|物料类型|材质|克重(g/m²)|尺寸|印刷工艺|环保标识`。**保留「物料类型」展示列**（主理人拍板 Q2）。
+  - 内容为 `derive_packaging()` 结果：排除 `material_type ∈ {"其他"}` 的物料，按 `(material_type, name)` 升序排序。
+  - `克重(g/m²)` 取 `basis_weight`（float，数字格式 `0.0`）；`材质` 取 `material`（与机械同名 key）；`环保标识` 取 `eco_label`（自由文本，无受限枚举，主理人拍板 Q5）。
+  - 非包装类**不输出此区块**。逆向按物料名回收 `material`/`basis_weight`/`size`/`print_process`/`eco_label`（回收 `material_type` 列 → 回写 `materials[].material_type`，因包装视图保留该展示列）。
+- **「成本明细」（跨行业，任一物料 `unit_price` 非空即生成，★V5 新增，★V6 扩集）**：派生区块。有行业专属视图（食品/电子/化工/纺织/家具/机械/包装）→ 标题 `四、成本明细`（A–H 合并，位于行业视图之后）；否则（仅通用）→ 标题 `三、成本明细`（位于工序区之后）。表头 **8 列**（A–H）`序号|物料名称|物料类型|用量|单位|单价|币种|总价`。
   - 内容为 `derive_cost()` 结果：纳入**全物料**中 `unit_price` 非空者（含行业视图排除的"其他"/"包材"类，成本核算面向全物料）。
   - **总价（H）**：`round(usage × unit_price, 2)` 实时派生（**不入库**，逆向不回收）；数字格式 `0.00`。
   - **币种（G）**：取 `currency`，缺省 `人民币(CNY)`；数字格式同单价/总价列。
   - 末行「成本合计」：A 列写「成本合计」，H 列写 Σ总价（纯展示，**逆向跳过**）。
   - 逆向按物料名回收 `unit_price`/`currency`（关键字 `成本明细` 识别）。
-- **其他行业（通用/机械/包装）**：不生成「三、」行业专属视图（机械/包装本期仅评估草案，见 `mechanical-packaging-draft-v5.md`）；仅当物料含 `unit_price` 时生成「三、成本明细」。
+- **其他行业（通用）**：不生成「三、」行业专属视图；仅当物料含 `unit_price` 时生成「三、成本明细」（位于工序区之后）。机械/包装已落地专属视图（见上），不再走通用兜底。
 - **样式**：标题 16pt 深蓝加粗居中；区标题 10pt 加粗；表头蓝底加粗居中带边框；数据单元格带边框、文本列左对齐、数值列居中；**数字格式统一**：出品率 / 全产品出品率 / 用量占比% / 含量(%) 均 `0.0"%"`。
 
 ### 列宽建议
@@ -373,10 +427,12 @@
 | industry | 列数 | A 序号 | B 物料名称 | C/D/E/F…（单位/用量/出品率/ERP…） | 扩列附加列 |
 |----------|------|--------|-----------|----------------------------------|-----------|
 | 通用/食品/纺织/家具 | 8 列（A–H） | 6 | 18 | C10/D10/E13/F16/G13/H12 | — |
+| 机械 | 8 列（A–H） | 6 | 18 | C16/D12/E13/F13/G12/H12 | — |
+| 包装 | 8 列（A–H） | 6 | 18 | C10/D12/E12/F18/G13/H13 | — |
 | 电子 | **14 列（A–N）** | 6 | 18 | C18/D12/E18/F10/G13/H10 | I14/J12/K14/L14/M16/N14（制造商/容差/额定功率/额定电压/替代料/封装温度） |
 | 化工 | **13 列（A–M）** | 6 | 18 | C12/D13/E14/F13/G12/H10 | I10/J12/K12/L18/M14（纯度/物态/闪点/存储条件/危险等级） |
 
-> 工序区仅用 A–F（G/H 留空）；配料表复用 A–G；元件清单/配方表/面料辅料清单/家具物料清单/成本明细使用 A–H；电子扩至 A–N、化工扩至 A–M。成本明细列宽同 8 列（A–H）。
+> 工序区仅用 A–F（G/H 留空）；配料表复用 A–G；元件清单/配方表/面料辅料清单/家具物料清单/机械物料清单/包装物料清单/成本明细使用 A–H；电子扩至 A–N、化工扩至 A–M。机械/包装/成本明细列宽同 8 列（A–H）。机械列序 `序号/物料名称/图号/材质/热处理/表面处理/重量(kg)/单重(kg/件)`，包装列序 `序号/物料名称/物料类型/材质/克重(g/m²)/尺寸/印刷工艺/环保标识`。
 
 ---
 
@@ -403,6 +459,8 @@ python3 import_bom.py --in <BOM.xlsx> [--out <data.json>]
    - 有「三、配料表」→ `industry = "食品"`
    - 有「三、面料辅料清单」→ `industry = "纺织"`
    - 有「三、家具物料清单」→ `industry = "家具"`
+   - 有「三、机械物料清单」→ `industry = "机械"`
+   - 有「三、包装物料清单」→ `industry = "包装"`
    - 无「三、」区块 → 按 `category` 推断（`CATEGORY_TO_INDUSTRY.get(category, "通用")`）
 
 ### 列头映射表
@@ -451,6 +509,20 @@ python3 import_bom.py --in <BOM.xlsx> [--out <data.json>]
 | **家具物料清单** | 尺寸规格 | → `material.spec_size`（V5） | `""` |
 | **家具物料清单** | 表面处理 | → `material.surface_treatment`（V5） | `""` |
 | **家具物料清单** | 色号/花色 / 色号 | → `material.color_no`（V5） | `""` |
+| **机械物料清单** | 物料名称 | （仅用于匹配） | — |
+| **机械物料清单** | 图号 | → `material.drawing_no`（V6） | `""` |
+| **机械物料清单** | 材质 | → `material.material`（V6） | `""` |
+| **机械物料清单** | 热处理 | → `material.heat_treatment`（V6） | `""` |
+| **机械物料清单** | 表面处理 | → `material.surface_treatment`（V6，与家具同 key） | `""` |
+| **机械物料清单** | 重量(kg) / 重量 | → `material.weight`（V6，float） | `""` |
+| **机械物料清单** | 单重(kg/件) / 单重 | → `material.unit_weight`（V6，float） | `""` |
+| **包装物料清单** | 物料名称 | （仅用于匹配） | — |
+| **包装物料清单** | 物料类型 | → `material.material_type`（V6，回收展示列） | `其他` |
+| **包装物料清单** | 材质 | → `material.material`（V6，与机械同名 key） | `""` |
+| **包装物料清单** | 克重(g/m²) / 克重 | → `material.basis_weight`（V6，float） | `""` |
+| **包装物料清单** | 尺寸 | → `material.size`（V6） | `""` |
+| **包装物料清单** | 印刷工艺 | → `material.print_process`（V6） | `""` |
+| **包装物料清单** | 环保标识 | → `material.eco_label`（V6，自由文本无枚举） | `""` |
 | **成本明细** | 物料名称 | （仅用于匹配） | — |
 | **成本明细** | 单价 | → `material.unit_price`（V5，float） | `""` |
 | **成本明细** | 币种 | → `material.currency`（V5，缺省 人民币(CNY)） | `""` |
@@ -469,7 +541,7 @@ python3 import_bom.py --in <BOM.xlsx> [--out <data.json>]
 |------|----------|------|
 | `product_name` | 扫描含 `产品名称` 的单元格，提取冒号后内容 | `""` |
 | `category` | 扫描含 `产品类别` 的单元格，提取冒号后内容 | `其他` |
-| `industry` | 从「三、」区块标记推断（有元件清单→电子，有配方表→化工，有配料表→食品，有面料辅料清单→纺织，有家具物料清单→家具，无→按 category 推断） | 按 category 推断 |
+| `industry` | 从「三、」区块标记推断（有元件清单→电子，有配方表→化工，有配料表→食品，有面料辅料清单→纺织，有家具物料清单→家具，有机械物料清单→机械，有包装物料清单→包装，无→按 category 推断） | 按 category 推断 |
 | `output_rate` | 扫描含 `全产品出品率` 的单元格，提取数字（去 `%`）转 float | `""` |
 | `version` | 含 `版本号` | `V1.0` |
 | `date` | 含 `生成日期` | `""` |
@@ -489,8 +561,10 @@ python3 import_bom.py --in <BOM.xlsx> [--out <data.json>]
 - **「三、元件清单」电子专属字段回收（V4 新增，仅电子；V5 扩列至 14 列）**：定位到区块后，读表头映射「物料名称」及 `位号(Designator)`/`型号(Part#)`/`封装(Footprint)`/`RoHS`/`制造商`/`容差`/`额定功率`/`额定电压`/`替代料`/`封装温度` 列，逐行按物料名匹配回写 `designator`/`part_number`/`footprint`/`rohs` + V5 `manufacturer`/`tolerance`/`rated_power`/`rated_voltage`/`alternate`/`reflow_temp`。
 - **「三、配方表」化工专属字段回收（V4 新增，仅化工；V5 扩列至 13 列）**：定位到区块后，读表头映射「物料名称」及 `CAS号`/`含量(%)`/`GHS标识`/`纯度`/`物态`/`闪点`/`存储条件`/`危险等级` 列，逐行按物料名匹配回写 `cas_number`/`concentration`/`ghs_hazard` + V5 `purity`/`physical_state`/`flash_point`/`storage_condition`/`hazard_class`。
 - **「三、面料辅料清单」纺织专属字段回收（V5 新增，仅纺织）**：定位到区块后，读表头映射「物料名称」及 `成分比例`/`纱支`/`克重(g/m²)`/`幅宽`/`色号` 列，逐行按物料名匹配回写 `composition`/`yarn_count`/`fabric_weight`/`width`/`color_no`。
-- **「三、家具物料清单」家具专属字段回收（V5 新增，仅家具）**：定位到区块后，读表头映射「物料名称」及 `材质等级`/`尺寸规格`/`表面处理`/`色号/花色` 列，逐行按物料名匹配回写 `material_grade`/`spec_size`/`surface_treatment`/`color_no`。
-- **「成本明细」成本字段回收（V5 新增，跨行业）**：定位到「成本明细」区块（关键字匹配，兼容「三、成本明细」/「四、成本明细」）后，读表头映射「物料名称」及 `单价`/`币种` 列，逐行按物料名匹配回写 `unit_price`/`currency`；`total_price` 不回收（派生展示）。
+   - **「三、家具物料清单」家具专属字段回收（V5 新增，仅家具）**：定位到区块后，读表头映射「物料名称」及 `材质等级`/`尺寸规格`/`表面处理`/`色号/花色` 列，逐行按物料名匹配回写 `material_grade`/`spec_size`/`surface_treatment`/`color_no`。
+   - **「三、机械物料清单」机械专属字段回收（V6 新增，仅机械）**：定位到区块后，读表头映射「物料名称」及 `图号`/`材质`/`热处理`/`表面处理`/`重量(kg)`/`单重(kg/件)` 列，逐行按物料名匹配回写 `drawing_no`/`material`/`heat_treatment`/`surface_treatment`/`weight`/`unit_weight`（`weight`/`unit_weight` 经 `float_fields` 解析为 float；机械视图无「物料类型」展示列，故不回收 `material_type`）。
+   - **「三、包装物料清单」包装专属字段回收（V6 新增，仅包装）**：定位到区块后，读表头映射「物料名称」及 `物料类型`/`材质`/`克重(g/m²)`/`尺寸`/`印刷工艺`/`环保标识` 列，逐行按物料名匹配回写 `material_type`/`material`/`basis_weight`/`size`/`print_process`/`eco_label`（`basis_weight` 经 `float_fields` 解析为 float）。
+   - **「成本明细」成本字段回收（V5 新增，跨行业）**：定位到「成本明细」区块（关键字匹配，兼容「三、成本明细」/「四、成本明细」）后，读表头映射「物料名称」及 `单价`/`币种` 列，逐行按物料名匹配回写 `unit_price`/`currency`；`total_price` 不回收（派生展示）。
 - **物料对象补全**：逆向输出时，每条物料对象补全全量专属字段（电子 10：`designator`/`footprint`/`part_number`/`rohs`/`manufacturer`/`tolerance`/`rated_power`/`rated_voltage`/`alternate`/`reflow_temp`；化工 8：`cas_number`/`concentration`/`ghs_hazard`/`purity`/`physical_state`/`flash_point`/`storage_condition`/`hazard_class`；纺织 5：`composition`/`yarn_count`/`fabric_weight`/`width`/`color_no`；家具 4：`material_grade`/`spec_size`/`surface_treatment`/`color_no`；成本 2：`unit_price`/`currency`），未回收到的默认空串 `""`。
 
 ### 旧版 Excel 兼容（向后兼容 R5）
@@ -513,4 +587,4 @@ python3 scripts/import_bom.py --in BOM_2026-07-07.xlsx --out bom_back.json
 python3 scripts/generate_bom.py --data bom_back.json --out BOM_v2.xlsx
 ```
 
-逆向导入得到的 JSON 与正向输入 Schema 一致（含 `industry` + 全量专属字段：电子 10/化工 8/纺织 5/家具 4/成本 2），因此可直接作为 `generate_bom.py --data` 的输入，实现「导入 → 编辑/查看 → 重新生成」的完整闭环（专属字段经回收后保留）。
+逆向导入得到的 JSON 与正向输入 Schema 一致（含 `industry` + 全量专属字段 `_SPECIAL_FIELDS`=37 唯一键：电子 10/化工 8/纺织 5/家具 4/机械 6/包装 5/成本 2），因此可直接作为 `generate_bom.py --data` 的输入，实现「导入 → 编辑/查看 → 重新生成」的完整闭环（专属字段经回收后保留）。

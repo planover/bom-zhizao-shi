@@ -56,6 +56,10 @@ from bom_constants import (
     TEXTILE_EXCLUDE,
     FURNITURE_TYPES,
     FURNITURE_EXCLUDE,
+    MECHANICAL_TYPES,
+    MECHANICAL_EXCLUDE,
+    PACKAGING_TYPES,
+    PACKAGING_EXCLUDE,
     EDIBLE_LIST,
     INDUSTRY_TEMPLATES,
 )
@@ -67,7 +71,8 @@ CATEGORIES = {"食品", "工业品", "日化化妆品", "医药", "其他"}
 # V5 成本币种默认值（currency 选填，缺省为人民币(CNY)）
 DEFAULT_CURRENCY = "人民币(CNY)"
 # 存在「三、」行业派生视图的行业集合（用于成本视图双编号判定）
-INDUSTRY_VIEW_SET = {"食品", "电子", "化工", "纺织", "家具"}
+# V6：扩至含机械/包装共 7 行业（机械/包装带成本时为「四、成本明细」）
+INDUSTRY_VIEW_SET = {"食品", "电子", "化工", "纺织", "家具", "机械", "包装"}
 
 
 def ensure_openpyxl():
@@ -423,6 +428,57 @@ def derive_furniture(data):
     for m in data.get("materials", []):
         mt = str(m.get("material_type") or "其他").strip() or "其他"
         if mt in FURNITURE_EXCLUDE:
+            excluded.append(m)
+        else:
+            items.append(m)
+
+    # 排序：物料类型（升序）→ 物料名称（升序，空排末尾）
+    items.sort(key=lambda x: (
+        str(x.get("material_type") or ""),
+        str(x.get("name") or ""),
+    ))
+    return items, excluded
+
+
+def derive_mechanical(data):
+    """派生机械物料清单（仅机械行业）。
+
+    返回 (items, excluded)：
+    - items: 机械物料（排除 material_type ∈ MECHANICAL_EXCLUDE，即"其他"类）
+    - excluded: 被排除的物料
+
+    排序：物料类型升序 → 物料名称升序（与 derive_textile/derive_furniture 同构）。
+    注意：物料类型不进视图展示列，仅用于过滤/排序（从物料区/JSON 取）。
+    """
+    items, excluded = [], []
+    for m in data.get("materials", []):
+        mt = str(m.get("material_type") or "其他").strip() or "其他"
+        if mt in MECHANICAL_EXCLUDE:
+            excluded.append(m)
+        else:
+            items.append(m)
+
+    # 排序：物料类型（升序）→ 物料名称（升序，空排末尾）
+    items.sort(key=lambda x: (
+        str(x.get("material_type") or ""),
+        str(x.get("name") or ""),
+    ))
+    return items, excluded
+
+
+def derive_packaging(data):
+    """派生包装物料清单（仅包装行业）。
+
+    返回 (items, excluded)：
+    - items: 包装物料（排除 material_type ∈ PACKAGING_EXCLUDE，即"其他"类）
+    - excluded: 被排除的物料
+
+    排序：物料类型升序 → 物料名称升序（与 derive_textile/derive_furniture 同构）。
+    """
+    items, excluded = [], []
+    for m in data.get("materials", []):
+        mt = str(m.get("material_type") or "其他").strip() or "其他"
+        if mt in PACKAGING_EXCLUDE:
             excluded.append(m)
         else:
             items.append(m)
@@ -1009,7 +1065,83 @@ def build_workbook(data, industry=None):
                 cell.alignment = aligns[col - 1]
             r += 1
 
-    # 其他行业（通用/机械/包装）不生成「三、」行业专属视图
+    elif industry == "机械":
+        # 三、机械物料清单（★V6 新增，8 列 A–H，不含「物料类型」展示列）
+        r += 1
+        ws.merge_cells(f"A{r}:H{r}")
+        ws.cell(r, 1, "三、机械物料清单").font = label_font
+        r += 1
+        mech_headers = [
+            "序号", "物料名称", "图号", "材质", "热处理", "表面处理",
+            "重量(kg)", "单重(kg/件)",
+        ]
+        for col, h in enumerate(mech_headers, 1):
+            cell = ws.cell(r, col, h)
+            cell.font = head_font
+            cell.fill = head_fill
+            cell.alignment = center
+            cell.border = border
+        r += 1
+        mech_items, _ = derive_mechanical(data)
+        for idx, m in enumerate(mech_items, 1):
+            row_vals = [
+                idx,
+                m.get("name", ""),
+                m.get("drawing_no", ""),
+                m.get("material", ""),
+                m.get("heat_treatment", ""),
+                m.get("surface_treatment", ""),
+                m.get("weight", ""),
+                m.get("unit_weight", ""),
+            ]
+            # 对齐：序号/图号/材质/热处理/表面处理/重量/单重 居中；物料名称 左对齐
+            aligns = [center, left, center, left, center, center, center, center]
+            for col, val in enumerate(row_vals, 1):
+                cell = ws.cell(r, col, val)
+                cell.font = cell_font
+                cell.border = border
+                cell.alignment = aligns[col - 1]
+            r += 1
+
+    elif industry == "包装":
+        # 三、包装物料清单（★V6 新增，8 列 A–H，保留「物料类型」展示列）
+        r += 1
+        ws.merge_cells(f"A{r}:H{r}")
+        ws.cell(r, 1, "三、包装物料清单").font = label_font
+        r += 1
+        pack_headers = [
+            "序号", "物料名称", "物料类型", "材质", "克重(g/m²)", "尺寸",
+            "印刷工艺", "环保标识",
+        ]
+        for col, h in enumerate(pack_headers, 1):
+            cell = ws.cell(r, col, h)
+            cell.font = head_font
+            cell.fill = head_fill
+            cell.alignment = center
+            cell.border = border
+        r += 1
+        pack_items, _ = derive_packaging(data)
+        for idx, m in enumerate(pack_items, 1):
+            row_vals = [
+                idx,
+                m.get("name", ""),
+                m.get("material_type", ""),
+                m.get("material", ""),
+                m.get("basis_weight", ""),
+                m.get("size", ""),
+                m.get("print_process", ""),
+                m.get("eco_label", ""),
+            ]
+            # 对齐：序号/物料类型/材质/克重/印刷工艺/环保标识 居中；物料名称/尺寸 左对齐
+            aligns = [center, left, center, left, center, left, center, center]
+            for col, val in enumerate(row_vals, 1):
+                cell = ws.cell(r, col, val)
+                cell.font = cell_font
+                cell.border = border
+                cell.alignment = aligns[col - 1]
+            r += 1
+
+    # 其他行业（通用）不生成「三、」行业专属视图
 
     # ===== V5: 跨行业成本明细视图（双编号） =====
     cost_items, has_cost = derive_cost(data)
@@ -1082,6 +1214,12 @@ def build_workbook(data, industry=None):
         widths = [6, 18, 18, 12, 18, 10, 13, 10, 14, 12, 14, 14, 16, 14]
     elif industry == "化工":
         widths = [6, 18, 12, 13, 14, 13, 12, 10, 10, 12, 12, 18, 14]
+    elif industry == "机械":
+        # V6：8 列微调（C=图号16，G/H=重量/单重 各12）
+        widths = [6, 18, 16, 12, 13, 13, 12, 12]
+    elif industry == "包装":
+        # V6：8 列微调（E=克重12，F=尺寸18）
+        widths = [6, 18, 10, 12, 12, 18, 13, 13]
     else:
         widths = [6, 18, 10, 10, 13, 16, 13, 12]
     for i, w in enumerate(widths, 1):
@@ -1163,6 +1301,24 @@ def main():
             names = [str(m.get("name") or "") for m in excluded]
             print(
                 "WARNING: 家具物料清单已排除 %d 条其他类物料：%s"
+                % (len(excluded), "、".join(names))
+            )
+    elif industry == "机械":
+        # V6: 机械物料清单排除提示（沿用 V4 排除提示模式，文案同构）
+        _, excluded = derive_mechanical(data)
+        if excluded:
+            names = [str(m.get("name") or "") for m in excluded]
+            print(
+                "WARNING: 机械物料清单已排除 %d 条其他类物料：%s"
+                % (len(excluded), "、".join(names))
+            )
+    elif industry == "包装":
+        # V6: 包装物料清单排除提示（沿用 V4 排除提示模式，文案同构）
+        _, excluded = derive_packaging(data)
+        if excluded:
+            names = [str(m.get("name") or "") for m in excluded]
+            print(
+                "WARNING: 包装物料清单已排除 %d 条其他类物料：%s"
                 % (len(excluded), "、".join(names))
             )
 

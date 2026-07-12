@@ -1,0 +1,129 @@
+{
+  "product_name": "电子产品运输包装箱",
+  "category": "工业品",
+  "industry": "包装",
+  "output_rate": 100,
+  "version": "V1.0",
+  "date": "2026-07-13",
+  "approver": "王包装",
+  "effective_date": "2026-07-15",
+  "standard": "GB/T 6543-2008",
+  "materials": [
+    {
+      "name": "印刷品",
+      "unit": "张",
+      "usage": 1,
+      "yield_rate": 100,
+      "erp_code": "WIP-001",
+      "material_type": "其他",
+      "process": "S02",
+      "material": "",
+      "basis_weight": "",
+      "size": "",
+      "print_process": "",
+      "eco_label": ""
+    },
+    {
+      "name": "外瓦楞箱",
+      "unit": "个",
+      "usage": 10,
+      "yield_rate": 100,
+      "erp_code": "PK-001",
+      "material_type": "纸箱",
+      "process": "S02",
+      "material": "瓦楞纸",
+      "basis_weight": 300,
+      "size": "400×300×200mm",
+      "print_process": "胶印",
+      "eco_label": "FSC"
+    },
+    {
+      "name": "珍珠棉衬",
+      "unit": "个",
+      "usage": 10,
+      "yield_rate": 100,
+      "erp_code": "PK-002",
+      "material_type": "缓冲",
+      "process": "S02",
+      "material": "EPE",
+      "basis_weight": 45,
+      "size": "380×280mm",
+      "print_process": "",
+      "eco_label": "可回收"
+    },
+    {
+      "name": "不干胶标",
+      "unit": "张",
+      "usage": 20,
+      "yield_rate": 100,
+      "erp_code": "PK-003",
+      "material_type": "标签",
+      "process": "S02",
+      "material": "PET",
+      "basis_weight": 80,
+      "size": "100×60mm",
+      "print_process": "数码印刷",
+      "eco_label": "可降解"
+    },
+    {
+      "name": "封箱胶带",
+      "unit": "卷",
+      "usage": 2,
+      "yield_rate": 100,
+      "erp_code": "PK-004",
+      "material_type": "胶带",
+      "process": "S02",
+      "material": "BOPP",
+      "basis_weight": 50,
+      "size": "48mm×100m",
+      "print_process": "",
+      "eco_label": ""
+    },
+    {
+      "name": "缠绕膜",
+      "unit": "卷",
+      "usage": 1,
+      "yield_rate": 100,
+      "erp_code": "PK-005",
+      "material_type": "薄膜",
+      "process": "S02",
+      "material": "PE",
+      "basis_weight": 23,
+      "size": "500mm×3000m",
+      "print_process": "",
+      "eco_label": "可回收"
+    },
+    {
+      "name": "备品标签",
+      "unit": "张",
+      "usage": 0.2,
+      "yield_rate": 100,
+      "erp_code": "PK-006",
+      "material_type": "其他",
+      "process": "S02",
+      "material": "",
+      "basis_weight": "",
+      "size": "",
+      "print_process": "",
+      "eco_label": ""
+    }
+  ],
+  "processes": [
+    {
+      "step_no": "S01",
+      "name": "印刷",
+      "desc": "胶印/柔印/数码印刷",
+      "work_hours": 20,
+      "note": "",
+      "output": "印刷品"
+    },
+    {
+      "step_no": "S02",
+      "name": "检验",
+      "desc": "外观与性能检验",
+      "work_hours": 10,
+      "note": "",
+      "output": "成品包装"
+    }
+  ]
+}

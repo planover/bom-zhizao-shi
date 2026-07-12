@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="820" height="1640" viewBox="0 0 820 1640" font-family="Microsoft YaHei, sans-serif">
-  <rect x="0" y="0" width="820" height="1640" fill="#FFFFFF"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="2120" viewBox="0 0 820 2120" font-family="Microsoft YaHei, sans-serif">
+  <rect x="0" y="0" width="820" height="2120" fill="#FFFFFF"/>
 
   <!-- 标题行 -->
   <rect x="25" y="20" width="770" height="36" fill="#FFFFFF" stroke="#BFBFBF"/>
@@ -781,4 +781,207 @@
   <text x="740" y="1583" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">15.38</text>
 
   <text x="33" y="1605" font-size="9" fill="#999999">注：总价=用量×单价（派生展示，不入库）；任一物料 unit_price 非空即生成；币种缺省为 人民币(CNY)；成本视图面向全物料（含"其他"类）</text>
+
+  <!-- ===== V6 机械行业示例：三、机械物料清单（8 列，无物料类型展示列） ===== -->
+  <rect x="25" y="1620" width="770" height="26" fill="#F5F5F5" stroke="#BFBFBF"/>
+  <text x="410" y="1637" text-anchor="middle" font-size="11" font-weight="bold" fill="#666666">── V6 机械行业示例：industry=机械 →「三、机械物料清单」（8 列，无物料类型展示列）──</text>
+
+  <rect x="25" y="1646" width="770" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <text x="33" y="1663" font-size="10" font-weight="bold" fill="#333333">三、机械物料清单</text>
+
+  <g font-size="9" fill="#1F3864" font-weight="bold">
+    <rect x="25" y="1672" width="45" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="70" y="1672" width="135" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="205" y="1672" width="120" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="325" y="1672" width="90" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="415" y="1672" width="95" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="510" y="1672" width="95" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="605" y="1672" width="90" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="695" y="1672" width="90" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <text x="47.5" y="1689" text-anchor="middle">序号</text>
+    <text x="137.5" y="1689" text-anchor="middle">物料名称</text>
+    <text x="265" y="1689" text-anchor="middle">图号</text>
+    <text x="370" y="1689" text-anchor="middle">材质</text>
+    <text x="462.5" y="1689" text-anchor="middle">热处理</text>
+    <text x="557.5" y="1689" text-anchor="middle">表面处理</text>
+    <text x="650" y="1689" text-anchor="middle">重量(kg)</text>
+    <text x="740" y="1689" text-anchor="middle">单重(kg/件)</text>
+  </g>
+
+  <g font-size="9" fill="#333333">
+    <rect x="25" y="1698" width="45" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="70" y="1698" width="135" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="205" y="1698" width="120" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="325" y="1698" width="90" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="415" y="1698" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="510" y="1698" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="605" y="1698" width="90" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="695" y="1698" width="90" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="47.5" y="1715" text-anchor="middle">1</text>
+    <text x="73" y="1715">传动轴</text>
+    <text x="265" y="1715" text-anchor="middle">DW-2026-011</text>
+    <text x="333" y="1715">45#钢</text>
+    <text x="420" y="1715">淬火+回火</text>
+    <text x="515" y="1715">镀锌</text>
+    <text x="650" y="1715" text-anchor="middle">1.20</text>
+    <text x="740" y="1715" text-anchor="middle">0.60</text>
+
+    <rect x="25" y="1724" width="45" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="70" y="1724" width="135" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="205" y="1724" width="120" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="325" y="1724" width="90" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="415" y="1724" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="510" y="1724" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="605" y="1724" width="90" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="695" y="1724" width="90" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="47.5" y="1741" text-anchor="middle">2</text>
+    <text x="73" y="1741">密封圈</text>
+    <text x="265" y="1741" text-anchor="middle">—</text>
+    <text x="333" y="1741">丁腈橡胶</text>
+    <text x="420" y="1741">—</text>
+    <text x="515" y="1741">—</text>
+    <text x="650" y="1741" text-anchor="middle">0.01</text>
+    <text x="740" y="1741" text-anchor="middle">0.01</text>
+  </g>
+
+  <text x="33" y="1756" font-size="9" fill="#999999">注：已排除"其他"类物料（如毛坯、备品）；无「物料类型」展示列（仅用于过滤/排序，主理人拍板 Q2）；重量/单重双字段保留不合并（Q1）</text>
+
+  <!-- ===== V6 包装行业示例：三、包装物料清单（8 列，保留物料类型展示列） ===== -->
+  <rect x="25" y="1780" width="770" height="26" fill="#F5F5F5" stroke="#BFBFBF"/>
+  <text x="410" y="1797" text-anchor="middle" font-size="11" font-weight="bold" fill="#666666">── V6 包装行业示例：industry=包装 →「三、包装物料清单」（8 列，保留物料类型展示列）──</text>
+
+  <rect x="25" y="1806" width="770" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <text x="33" y="1823" font-size="10" font-weight="bold" fill="#333333">三、包装物料清单</text>
+
+  <g font-size="9" fill="#1F3864" font-weight="bold">
+    <rect x="25" y="1832" width="45" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="70" y="1832" width="135" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="205" y="1832" width="75" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="280" y="1832" width="90" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="370" y="1832" width="90" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="460" y="1832" width="135" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="595" y="1832" width="95" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="690" y="1832" width="95" height="26" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <text x="47.5" y="1849" text-anchor="middle">序号</text>
+    <text x="137.5" y="1849" text-anchor="middle">物料名称</text>
+    <text x="242.5" y="1849" text-anchor="middle">物料类型</text>
+    <text x="325" y="1849" text-anchor="middle">材质</text>
+    <text x="415" y="1849" text-anchor="middle">克重(g/m²)</text>
+    <text x="527.5" y="1849" text-anchor="middle">尺寸</text>
+    <text x="642.5" y="1849" text-anchor="middle">印刷工艺</text>
+    <text x="737.5" y="1849" text-anchor="middle">环保标识</text>
+  </g>
+
+  <g font-size="9" fill="#333333">
+    <rect x="25" y="1858" width="45" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="70" y="1858" width="135" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="205" y="1858" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="280" y="1858" width="90" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="370" y="1858" width="90" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="460" y="1858" width="135" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="595" y="1858" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="690" y="1858" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="47.5" y="1875" text-anchor="middle">1</text>
+    <text x="73" y="1875">外箱</text>
+    <text x="242.5" y="1875" text-anchor="middle">纸箱</text>
+    <text x="333" y="1875">瓦楞纸</text>
+    <text x="415" y="1875" text-anchor="middle">200</text>
+    <text x="527.5" y="1875" text-anchor="middle">400×300×200mm</text>
+    <text x="642.5" y="1875" text-anchor="middle">胶印</text>
+    <text x="737.5" y="1875" text-anchor="middle">FSC</text>
+
+    <rect x="25" y="1884" width="45" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="70" y="1884" width="135" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="205" y="1884" width="75" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="280" y="1884" width="90" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="370" y="1884" width="90" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="460" y="1884" width="135" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="595" y="1884" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="690" y="1884" width="95" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="47.5" y="1901" text-anchor="middle">2</text>
+    <text x="73" y="1901">缓冲泡棉</text>
+    <text x="242.5" y="1901" text-anchor="middle">缓冲</text>
+    <text x="333" y="1901">EPE</text>
+    <text x="415" y="1901" text-anchor="middle">30</text>
+    <text x="527.5" y="1901" text-anchor="middle">380×280mm</text>
+    <text x="642.5" y="1901" text-anchor="middle">—</text>
+    <text x="737.5" y="1901" text-anchor="middle">可回收</text>
+  </g>
+
+  <text x="33" y="1916" font-size="9" fill="#999999">注：已排除"其他"类物料（如封箱胶带零散件）；保留「物料类型」展示列（主理人拍板 Q2）；克重为数值(g/m²)；环保标识自由文本无枚举（Q5）</text>
+
+  <!-- ===== V6 机械带成本 → 四、成本明细（INDUSTRY_VIEW_SET 扩至 7 行业） ===== -->
+  <rect x="25" y="1940" width="770" height="26" fill="#F5F5F5" stroke="#BFBFBF"/>
+  <text x="410" y="1957" text-anchor="middle" font-size="11" font-weight="bold" fill="#666666">── V6 机械带成本 →「四、成本明细」（INDUSTRY_VIEW_SET 扩至 7 行业含机械/包装）──</text>
+
+  <rect x="25" y="1966" width="770" height="26" fill="#FFFFFF" stroke="#BFBFBF"/>
+  <text x="33" y="1983" font-size="10" font-weight="bold" fill="#333333">四、成本明细</text>
+
+  <g font-size="10" fill="#1F3864" font-weight="bold">
+    <rect x="25" y="1992" width="40" height="24" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="65" y="1992" width="155" height="24" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="220" y="1992" width="60" height="24" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="280" y="1992" width="75" height="24" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="355" y="1992" width="90" height="24" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="445" y="1992" width="130" height="24" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="575" y="1992" width="110" height="24" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <rect x="685" y="1992" width="110" height="24" fill="#D9E1F2" stroke="#BFBFBF"/>
+    <text x="45" y="2009" text-anchor="middle">序号</text>
+    <text x="142.5" y="2009" text-anchor="middle">物料名称</text>
+    <text x="250" y="2009" text-anchor="middle">物料类型</text>
+    <text x="317.5" y="2009" text-anchor="middle">用量</text>
+    <text x="400" y="2009" text-anchor="middle">单位</text>
+    <text x="510" y="2009" text-anchor="middle">单价</text>
+    <text x="630" y="2009" text-anchor="middle">币种</text>
+    <text x="740" y="2009" text-anchor="middle">总价</text>
+  </g>
+
+  <g font-size="10" fill="#333333">
+    <rect x="25" y="2018" width="40" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="65" y="2018" width="155" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="220" y="2018" width="60" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="280" y="2018" width="75" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="355" y="2018" width="90" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="445" y="2018" width="130" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="575" y="2018" width="110" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="685" y="2018" width="110" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="45" y="2033" text-anchor="middle">1</text>
+    <text x="73" y="2033">传动轴</text>
+    <text x="250" y="2033" text-anchor="middle">零部件</text>
+    <text x="317.5" y="2033" text-anchor="middle">2</text>
+    <text x="400" y="2033" text-anchor="middle">件</text>
+    <text x="510" y="2033" text-anchor="middle">850.00</text>
+    <text x="630" y="2033">人民币(CNY)</text>
+    <text x="740" y="2033" text-anchor="middle">1700.00</text>
+
+    <rect x="25" y="2040" width="40" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="65" y="2040" width="155" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="220" y="2040" width="60" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="280" y="2040" width="75" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="355" y="2040" width="90" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="445" y="2040" width="130" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="575" y="2040" width="110" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <rect x="685" y="2040" width="110" height="22" fill="#FFFFFF" stroke="#BFBFBF"/>
+    <text x="45" y="2055" text-anchor="middle">2</text>
+    <text x="73" y="2055">密封圈</text>
+    <text x="250" y="2055" text-anchor="middle">标准件</text>
+    <text x="317.5" y="2055" text-anchor="middle">4</text>
+    <text x="400" y="2055" text-anchor="middle">件</text>
+    <text x="510" y="2055" text-anchor="middle">1.20</text>
+    <text x="630" y="2055">人民币(CNY)</text>
+    <text x="740" y="2055" text-anchor="middle">4.80</text>
+  </g>
+
+  <rect x="25" y="2062" width="40" height="22" fill="#EFEFEF" stroke="#BFBFBF"/>
+  <rect x="65" y="2062" width="155" height="22" fill="#EFEFEF" stroke="#BFBFBF"/>
+  <rect x="220" y="2062" width="60" height="22" fill="#EFEFEF" stroke="#BFBFBF"/>
+  <rect x="280" y="2062" width="75" height="22" fill="#EFEFEF" stroke="#BFBFBF"/>
+  <rect x="355" y="2062" width="90" height="22" fill="#EFEFEF" stroke="#BFBFBF"/>
+  <rect x="445" y="2062" width="130" height="22" fill="#EFEFEF" stroke="#BFBFBF"/>
+  <rect x="575" y="2062" width="110" height="22" fill="#EFEFEF" stroke="#BFBFBF"/>
+  <rect x="685" y="2062" width="110" height="22" fill="#EFEFEF" stroke="#BFBFBF"/>
+  <text x="30" y="2079" font-size="10" font-weight="bold" fill="#1F3864">成本合计</text>
+  <text x="740" y="2079" text-anchor="middle" font-size="10" font-weight="bold" fill="#1F3864">1704.80</text>
+
+  <text x="33" y="2095" font-size="9" fill="#999999">注：总价=用量×单价（派生展示，不入库）；机械/包装带 unit_price →「四、成本明细」；币种缺省 人民币(CNY)；成本视图面向全物料</text>
 </svg>

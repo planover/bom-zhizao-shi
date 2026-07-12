@@ -14,6 +14,13 @@ V5 增强（相对 V4）：
 - 物料对象专属字段扩至 28 个唯一 JSON 键（设计文档按行业叠加计为 29 概念字段，
   其中 color_no 在纺织/家具共用同一 JSON key，故唯一键为 28）。
 
+V6 增强（相对 V5）：
+- 识别「三、机械物料清单」/「三、包装物料清单」区块标记 → 按物料名回收
+  机械(6)/包装(5) 专属字段；机械/包装带成本仍为「成本明细」关键字回收（沿用 V5）。
+- 推断 industry 增「三、机械物料清单」→机械、「三、包装物料清单」→包装。
+- 物料对象专属字段扩至 37 个唯一 JSON 键（V5 的 28 唯一键 + V6 净增 9
+  唯一键；其中 material 与包装/机械同名、surface_treatment 与家具同名各只计一次）。
+
 V4 增强（相对 V3）：
 - 识别「三、元件清单」/「三、配方表」区块标记 → 按物料名回收电子/化工专属字段。
 - 推断 industry：从「三、」区块标记推断（有元件清单→电子，有配方表→化工，
@@ -41,10 +48,12 @@ import subprocess
 from bom_constants import CATEGORY_TO_INDUSTRY
 
 
-# V5 物料级专属字段（逆向回收后默认空串，未匹配到的保持空）
-# 设计文档按行业叠加计为 29 概念字段，其中 color_no 在纺织/家具共用同一 JSON key，
-# 故此处唯一 JSON 键为 28 个：V4(7) + 纺织(5) + 家具(4) + 电子扩列(6) + 化工扩列(5) + 成本(2)，
-# 减去 color_no 重复计 1 = 28。
+# V6 物料级专属字段（逆向回收后默认空串，未匹配到的保持空）
+# 唯一 JSON 键计为 37 个：V5 实际 28 个（V4(7) + 纺织(5) + 家具(4) + 电子扩列(6) +
+# 化工扩列(5) + 成本(2)，减去 color_no 与纺织共用重复计 1 = 28），V6 净增 9 个唯一键
+# （drawing_no / material / heat_treatment / weight / unit_weight / basis_weight /
+# size / print_process / eco_label）；其中 surface_treatment 已存在于 V5 家具，
+# material 与包装/机械同名仅计一次。概念计数（含同名重复计）为 40，去重后 37。
 _SPECIAL_FIELDS = [
     # V4 电子/化工
     "designator",
@@ -81,6 +90,17 @@ _SPECIAL_FIELDS = [
     # V5 成本（入库字段；total_price 为派生不入库）
     "unit_price",
     "currency",
+    # V6 机械（material 与包装同名、surface_treatment 与家具同名，均只计一次）
+    "drawing_no",
+    "material",
+    "heat_treatment",
+    "weight",
+    "unit_weight",
+    # V6 包装
+    "basis_weight",
+    "size",
+    "print_process",
+    "eco_label",
 ]
 
 
@@ -215,7 +235,9 @@ def _infer_industry_from_blocks(ws, category):
     3. 有「三、配料表」→ 食品
     4. 有「三、面料辅料清单」→ 纺织
     5. 有「三、家具物料清单」→ 家具
-    6. 无「三、」行业区块 → 按 category 推断（CATEGORY_TO_INDUSTRY）
+    6. 有「三、机械物料清单」→ 机械（V6 新增）
+    7. 有「三、包装物料清单」→ 包装（V6 新增）
+    8. 无「三、」行业区块 → 按 category 推断（CATEGORY_TO_INDUSTRY）
 
     注：成本明细（「三、成本明细」/「四、成本明细」）不参与 industry 推断。
 
@@ -236,6 +258,10 @@ def _infer_industry_from_blocks(ws, category):
         return "纺织"
     if _find_marker_row(ws, "三、家具物料清单") is not None:
         return "家具"
+    if _find_marker_row(ws, "三、机械物料清单") is not None:
+        return "机械"
+    if _find_marker_row(ws, "三、包装物料清单") is not None:
+        return "包装"
     return CATEGORY_TO_INDUSTRY.get(category, "通用")
 
 
@@ -256,7 +282,9 @@ def _recover_block_fields(ws, marker_row, field_col_map, materials):
     if not name_c:
         return
     # 数值型字段：回收时转为 float（空则保留空串），保证闭环类型一致
-    float_fields = ("concentration", "fabric_weight", "unit_price")
+    # V6 增 weight/unit_weight/basis_weight（机械/包装数值字段）
+    float_fields = ("concentration", "fabric_weight", "unit_price",
+                    "weight", "unit_weight", "basis_weight")
     rr = marker_row + 2  # 跳过标题行和表头行
     while rr <= ws.max_row:
         nm = _str_or_empty(ws.cell(rr, name_c).value)
@@ -353,6 +381,9 @@ def parse_bom(path):
     # V5: 新增纺织/家具/成本区块定位
     textile_row = _find_marker_row(ws, "三、面料辅料清单")
     furniture_row = _find_marker_row(ws, "三、家具物料清单")
+    # V6: 新增机械/包装区块定位
+    mechanical_row = _find_marker_row(ws, "三、机械物料清单")
+    packaging_row = _find_marker_row(ws, "三、包装物料清单")
     cost_row = _find_marker_row(ws, "成本明细")  # 关键字兼容「三、/四、成本明细」
 
     # 物料区表头行（标记行 +1），建立列头 → 列号映射。
@@ -437,6 +468,10 @@ def parse_bom(path):
         if textile_row is not None and r >= textile_row:
             break
         if furniture_row is not None and r >= furniture_row:
+            break
+        if mechanical_row is not None and r >= mechanical_row:
+            break
+        if packaging_row is not None and r >= packaging_row:
             break
         if cost_row is not None and r >= cost_row:
             break
@@ -550,6 +585,34 @@ def parse_bom(path):
             "color_no": _col_of(fur_map, ["色号/花色", "色号"]),
         }
         _recover_block_fields(ws, furniture_row, field_col_map, materials)
+
+    # 三、机械物料清单 机械专属字段回收（V6 新增，6 字段）
+    if mechanical_row is not None:
+        mech_map = _map_header(ws, mechanical_row + 1)
+        field_col_map = {
+            "name": mech_map.get("物料名称"),
+            "drawing_no": _col_of(mech_map, ["图号"]),
+            "material": _col_of(mech_map, ["材质"]),
+            "heat_treatment": _col_of(mech_map, ["热处理"]),
+            "surface_treatment": _col_of(mech_map, ["表面处理"]),
+            "weight": _col_of(mech_map, ["重量(kg)", "重量"]),
+            "unit_weight": _col_of(mech_map, ["单重(kg/件)", "单重"]),
+        }
+        _recover_block_fields(ws, mechanical_row, field_col_map, materials)
+
+    # 三、包装物料清单 包装专属字段回收（V6 新增，5 字段）
+    # 注：material_type 已在物料区回收，此处 field_col_map 不含该键，避免重复回写
+    if packaging_row is not None:
+        pack_map = _map_header(ws, packaging_row + 1)
+        field_col_map = {
+            "name": pack_map.get("物料名称"),
+            "material": _col_of(pack_map, ["材质"]),
+            "basis_weight": _col_of(pack_map, ["克重(g/m²)", "克重"]),
+            "size": _col_of(pack_map, ["尺寸"]),
+            "print_process": _col_of(pack_map, ["印刷工艺"]),
+            "eco_label": _col_of(pack_map, ["环保标识"]),
+        }
+        _recover_block_fields(ws, packaging_row, field_col_map, materials)
 
     # 成本明细 成本字段回收（V5 新增，关键字「成本明细」兼容 三/四、前缀）
     # 回收 unit_price/currency；总价(H列)为派生展示，不回收

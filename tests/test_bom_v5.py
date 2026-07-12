@@ -955,5 +955,5 @@ def test_v5_t26_py_compile():
     sys.path.insert(0, os.path.join(SKILL_DIR, "scripts"))
     import bom_constants  # noqa: F401
     from import_bom import _SPECIAL_FIELDS  # noqa: F401
-    assert len(_SPECIAL_FIELDS) == 28, \
-        "T26 逆向特殊字段唯一键应为 28, 实际 %d" % len(_SPECIAL_FIELDS)
+    assert len(_SPECIAL_FIELDS) == 37, \
+        "T26 逆向特殊字段唯一键应为 37(V5的28 + V6净增9), 实际 %d" % len(_SPECIAL_FIELDS)
