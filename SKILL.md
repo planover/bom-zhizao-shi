@@ -371,9 +371,24 @@ description: BOM智造师 —— 交互式引导用户录入物料信息与工�
 1. 将汇总数据序列化为 JSON（结构见 `references/bom-spec.md` 的「输入 JSON Schema」）。
 2. 调用生成脚本（脚本会自动确保 openpyxl 可用，无需预先配置）：
    ```
+   # 单文件（V6 向后兼容）
    python3 <skill_dir>/scripts/generate_bom.py --data <临时json文件> --out <输出路径.xlsx>
+
+   # 双语（追加「BOM表(英)」工作表，主表与 V6 逐字节一致）
+   python3 <skill_dir>/scripts/generate_bom.py --data <临时json文件> --out <输出路径.xlsx> --bilingual
+
+   # B1 空白模板（默认全 8 行业；可指定 --industries 食品,电子）
+   python3 <skill_dir>/scripts/generate_bom.py --blank-templates --out-dir <目录> [--industries 食品,电子] [--bilingual]
+
+   # B2 批量生成（按目录或显式文件列表）
+   python3 <skill_dir>/scripts/generate_bom.py --batch-dir <输入目录> --out-dir <输出目录> [--bilingual]
+   python3 <skill_dir>/scripts/generate_bom.py --batch f1.json,f2.json --out-dir <输出目录> [--bilingual]
    ```
    说明：`<skill_dir>` 为本技能所在目录；输出路径默认当前工作目录，文件名 `BOM_<日期>.xlsx`，用户可指定。
+   - **优先级**：`--blank-templates` > `--batch-dir`/`--batch` > 单文件（`--data`/`--out`）。
+   - **双语提示**：当用户需要英文版 / 对外交付 / 双语对照时，加 `--bilingual`；`bilingual=False`（默认）主表与 V6 完全一致。编码类字段（`standard` 代号、CAS/GHS、行业专属代码）不翻译，仅标签翻译；「物料类型」在英文表显示英文（如 `主料`→`Main Material`）。
+   - **B1**：生成 `template_<行业>.xlsx`（空白结构，不校验），适合作为录入底稿。
+   - **B2**：逐文件生成 `BOM_<产品名>_<日期>.xlsx`；单文件失败不中断，结束打印「成功 N / 失败 M」，有失败则整体退出码 2。
 3. 脚本打印 `OK:<路径>` 表示成功，打印 `VALIDATION_FAILED` 及错误列表表示数据问题——此时回到「数据校验」修正后重试。
 4. 将生成的 .xlsx 绝对路径作为结果呈现给用户。
 
@@ -395,14 +410,19 @@ description: BOM智造师 —— 交互式引导用户录入物料信息与工�
 **触发**：用户用导入类关键词（见「触发与入口」）开启本流程，或正向流程结束后用户选择「重新编辑已有 BOM」。
 
 **步骤**：
-1. 请用户提供 .xlsx 文件路径（支持绝对/相对路径）。
+1. 请用户提供 .xlsx 文件路径（支持绝对/相对路径；B3 合并支持多个文件）。
 2. 调用逆向解析脚本（复用与正向一致的 openpyxl 自动安装机制）：
    ```
+   # 单文件 / 多文件无 --merge：按首个处理（V6 向后兼容）
    python3 <skill_dir>/scripts/import_bom.py --in <BOM.xlsx> [--out <data.json>]
+
+   # B3 多文件合并（必填 --out）
+   python3 <skill_dir>/scripts/import_bom.py --in f1.xlsx f2.xlsx ... --merge --out merged.json
    ```
    - 脚本按「一、物料信息」「二、工艺工序」标记定位，解析标题/版本号/生成日期与物料、工序数据，重建与正向输入 JSON Schema 一致的 JSON（详见 `references/bom-spec.md` 的「逆向导入」节）。
    - 脚本打印 `OK:<路径或JSON>` 表示成功；若文件非 BOM 格式或缺失必要标记，打印 `PARSE_ERROR` 并以退出码 2 结束（此时提示用户检查文件）。
-3. 将解析结果以结构化汇总呈现给用户（版本号、日期、物料条数、工序条数，可附关键字段预览）。
+   - **B3 合并**：`--in` 接受多个文件，`--merge` 将其顺序合并为单 JSON——materials/processes 按文件顺序 `extend`（不去重）；`step_no` 跨文件重复仅记 `merge_notes`（不重命名）；`industry` 取首个非空文件；顶层写入 `merged_from`（各文件 industry 列表）与 `merge_notes`（冲突/失败说明）；单文件解析失败跳过并记 `merge_notes`，不影响其余文件；全部失败则 `MERGE_FAILED`（退出码 2）。单 `--in` 无 `--merge` 维持 V6 行为（无 `merged_from`/`merge_notes`）。
+3. 将解析结果以结构化汇总呈现给用户（版本号、日期、物料条数、工序条数，可附关键字段预览；B3 合并时附 `merged_from` 与 `merge_notes`）。
 4. 提供选项：
    ```
    解析完成。请选择：
@@ -433,9 +453,9 @@ description: BOM智造师 —— 交互式引导用户录入物料信息与工�
 
 ## Resources
 ### scripts/
-- `bom_constants.py`：V4 共享常量模块（纯 Python 标准库，无第三方依赖）。定义行业枚举 `INDUSTRIES`、category→industry 推断映射 `CATEGORY_TO_INDUSTRY`、元件/配方过滤集 `COMPONENT_EXCLUDE`/`FORMULA_EXCLUDE`、执行标准建议 `INDUSTRY_STANDARD`，以及从 `generate_bom.py` 迁入的食品配料表过滤集 `EDIBLE` 与过敏原集合/关键词 `ALLERGEN_SET`/`ALLERGEN_HINTS`。`generate_bom.py` 与 `import_bom.py` 均从此模块导入，保持单一真相源。
-- `generate_bom.py`：读取 JSON 数据，生成 BOM 表 .xlsx（标题「BOM表」、产品名称、产品类别、全产品出品率、版本号、生成日期、物料区（8 列：含首列「序号」、ERP物料代码/物料类型/所属工序，分工序分组呈现）、工序区（含产物列）、行 5 可选展示审批人/生效日期/执行标准、物料区末「合计用量」行）；V4 按行业派生专属视图：食品→「三、配料表」（7 列，含用量占比%/过敏原），电子→「三、元件清单」（8 列，含位号/型号/封装/RoHS 红黄字标记），化工→「三、配方表」（8 列，含 CAS号/含量(%)/GHS标识）；含样式与防御性校验（V1–V7 阻断级 + V8/W1/H1/W2/W3/含量和软校验非阻断）；依赖 openpyxl，缺失时自装。
-- `import_bom.py`：逆向导入脚本。读取由 `generate_bom.py` 生成的 BOM 表 .xlsx，**按列头文本定位列号**解析，重建与正向输入 JSON Schema 一致的结构化 JSON（含 product_name、category、industry、output_rate、erp_code、material_type、process、output、approver、effective_date、standard、materials[].allergen + 7 个专属字段，向后兼容旧版 7/5 列 Excel）；V4 从「三、」区块标记推断 industry（有元件清单→电子，有配方表→化工，有配料表→食品，无→按 category 推断）；按物料名从「三、元件清单」回收 designator/footprint/part_number/rohs，从「三、配方表」回收 cas_number/concentration/ghs_hazard；物料对象补全 7 个专属字段默认空串；CLI 为 `python3 import_bom.py --in <BOM.xlsx> [--out <data.json>]`；依赖 openpyxl，缺失时自装。
+- `bom_constants.py`：V4 共享常量模块（纯 Python 标准库，无第三方依赖）。定义行业枚举 `INDUSTRIES`（含 V7 `ALL_INDUSTRIES` 8 值：食品/电子/化工/机械/纺织/家具/包装/通用）、category→industry 推断映射 `CATEGORY_TO_INDUSTRY`、元件/配方过滤集 `COMPONENT_EXCLUDE`/`FORMULA_EXCLUDE`、执行标准建议 `INDUSTRY_STANDARD`，以及从 `generate_bom.py` 迁入的食品配料表过滤集 `EDIBLE` 与过敏原集合/关键词 `ALLERGEN_SET`/`ALLERGEN_HINTS`；V7 新增双语字典 `I18N`（英文键→中文值）与反向 `ZH2EN = {v: k for k, v in I18N.items()}`（仅 `generate_bom.py` 使用，`import_bom.py` 不依赖）。`generate_bom.py` 与 `import_bom.py` 均从此模块导入，保持单一真相源。
+- `generate_bom.py`：读取 JSON 数据，生成 BOM 表 .xlsx（标题「BOM表」、产品名称、产品类别、全产品出品率、版本号、生成日期、物料区（8 列：含首列「序号」、ERP物料代码/物料类型/所属工序，分工序分组呈现）、工序区（含产物列）、行 5 可选展示审批人/生效日期/执行标准、物料区末「合计用量」行）；V4 按行业派生专属视图：食品→「三、配料表」（7 列，含用量占比%/过敏原），电子→「三、元件清单」（8 列，含位号/型号/封装/RoHS 红黄字标记），化工→「三、配方表」（8 列，含 CAS号/含量(%)/GHS标识）；含样式与防御性校验（V1–V7 阻断级 + V8/W1/H1/W2/W3/含量和软校验非阻断）；V7 新增 `--bilingual`（追加「BOM表(英)」工作表，主表与 V6 逐字节一致）、`--blank-templates`+`--out-dir`+`--industries`（B1 空白模板）、`--batch-dir`/`--batch`+`--out-dir`（B2 批量生成，错误隔离、失败退出码 2）；依赖 openpyxl，缺失时自装。
+- `import_bom.py`：逆向导入脚本。读取由 `generate_bom.py` 生成的 BOM 表 .xlsx，**按列头文本定位列号**解析，重建与正向输入 JSON Schema 一致的结构化 JSON（含 product_name、category、industry、output_rate、erp_code、material_type、process、output、approver、effective_date、standard、materials[].allergen + 7 个专属字段，向后兼容旧版 7/5 列 Excel）；V4 从「三、」区块标记推断 industry（有元件清单→电子，有配方表→化工，有配料表→食品，无→按 category 推断）；按物料名从「三、元件清单」回收 designator/footprint/part_number/rohs，从「三、配方表」回收 cas_number/concentration/ghs_hazard；物料对象补全 7 个专属字段默认空串；V7 将 `--in` 改为 `nargs="+"` 并新增 `--merge`+`--out` 实现 B3 多文件合并（`_parse_bom_nofail` 错误隔离、`_merge_boms` 顺序 extend + step_no 冲突留痕 + `merged_from`/`merge_notes`）；CLI 为 `python3 import_bom.py --in <BOM.xlsx> [--out <data.json>]` 或 `python3 import_bom.py --in f1.xlsx f2.xlsx --merge --out merged.json`；依赖 openpyxl，缺失时自装。
 
 ### references/
 - `bom-spec.md`：BOM 表 Excel 结构规范与输入 JSON Schema（含 V4 行业字段与专属视图），供生成脚本与汇总序列化参考。

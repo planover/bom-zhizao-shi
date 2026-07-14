@@ -1,5 +1,33 @@
 # Changelog · BOM智造师（bom-zhizao-shi）
 
+## [V7.0] - 2026-07-14
+
+> P0 全部实现（双语 / 空白模板 / 批量生成 / 逆向合并），增量、100% 向后兼容 V6。不新增任何阻断/软校验，不引入新第三方依赖（仅 openpyxl）；I18N 为纯 Python 字典；`import_bom.py` 不依赖 I18N/ZH2EN。
+
+### 双语 BOM（P0-A · `--bilingual`）
+- 新增 `--bilingual` 开关（默认 `False`）。`False` 时主表「BOM表」与 V6 **逐字节一致**（已用单元级 diff 校验 10 类样本全同）。
+- `True` 时在「BOM表」之后追加第二张工作表「BOM表(英)」，用同一份数据重新渲染（非工作表拷贝）：标题 `BOM表 (BOM Table)`；区块标题渲染为合并行 `中文 (English)`；表头上下两行（中文上 / 英文下）；`物料类型` 按 `ZH2EN` 显示英文。
+- 编码类字段（`standard` 代号、CAS/GHS、行业专属代码）不翻译，仅翻译展示标签。
+- `scripts/bom_constants.py` 新增 `I18N`（英文键→中文值）与反向 `ZH2EN = {v: k for k, v in I18N.items()}`。
+
+### 空白模板批量（P0-B1 · `--blank-templates`）
+- 新增 `--blank-templates` + `--out-dir`（默认 `.`）+ 可选 `--industries`（逗号分隔，默认全 8 行业）。
+- 按行业生成 `template_<行业>.xlsx`（空白 BOM 结构），不校验；与 `--bilingual` 可组合。
+
+### 批量生成（P0-B2 · `--batch-dir` / `--batch`）
+- 新增 `--batch-dir <目录>` 或 `--batch f1.json,f2.json,...` + `--out-dir`；逐文件生成 `BOM_<产品名>_<日期>.xlsx`（产品名非法字符替换为 `_`，缺失回退序号）。
+- 错误隔离：单文件失败不中断，结束打印「成功 N / 失败 M」；M>0 时整体退出码 2。
+- 优先级：`--blank-templates` > `--batch-dir`/`--batch` > 单文件（`--data`/`--out`）；单文件缺参打印 `USAGE_ERROR` 并退出码 2。
+
+### 逆向合并（P0-B3 · `import_bom.py --in nargs="+" --merge`）
+- `import_bom.py --in` 改为 `nargs="+"`；新增 `--merge` + `--out` 实现多文件合并。
+- 多文件顺序 `extend` materials/processes（不去重）；`step_no` 跨文件冲突仅记 `merge_notes` 不重命名；`industry` 取首个非空；顶层写入 `merged_from`（各文件 industry）与 `merge_notes`（冲突/失败说明）。
+- 新增 `_ParseError` + `_parse_bom_core` / `_parse_bom_nofail`（不退出变体，实现错误隔离）+ `_merge_boms`（合并主流程）；单文件失败跳过并记 `merge_notes`。
+- 单 `--in` 无 `--merge`：维持 V6 行为（无 `merged_from`/`merge_notes`）；多 `--in` 无 `--merge` 打印 `WARNING` 并仅处理首个。
+
+### 文档与示例
+- `references/bom-spec.md`、`SKILL.md`、`README.md` 同步 V7 双语/批量/合并说明；`CHANGELOG.md` 新增本段。
+
 ## [V6.0] - 2026-07-12
 
 > P0 全部实现：机械/包装专属派生视图正式落地（补 V5 P2 评估项）；行业模板预设填实机械/包装；成本视图双编号集合扩至 7 行业。100% 向后兼容，不新增任何阻断/软校验，不引入新依赖。

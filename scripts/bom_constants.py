@@ -250,3 +250,84 @@ INDUSTRY_TEMPLATES = {
         ],
     },
 }
+
+# === V7 双语导出 I18N 字典（eng 为键，值为中文） ===
+# 单一真相源，供 generate_bom.py 渲染双语 sheet 时使用；
+# import_bom.py 永不引用（逆向恒读中文「BOM表」sheet，零回归）。
+I18N = {
+    # —— 标题 ——
+    "BOM Table": "BOM表",
+    # —— 11 个区块标题 ——
+    "I. Material Information": "一、物料信息",
+    "II. Process / Manufacturing Process": "二、工艺工序",
+    "III. Ingredients List": "三、配料表",
+    "III. Components List": "三、元件清单",
+    "III. Formula List": "三、配方表",
+    "III. Fabric & Trims List": "三、面料辅料清单",
+    "III. Furniture BOM List": "三、家具物料清单",
+    "III. Mechanical BOM List": "三、机械物料清单",
+    "III. Packaging BOM List": "三、包装物料清单",
+    "III. Cost Detail": "三、成本明细",
+    "IV. Cost Detail": "四、成本明细",
+    # —— 物料区 8 列 ——
+    "No.": "序号", "Material Name": "物料名称", "Unit": "单位",
+    "Qty": "用量", "Yield(%)": "出品率(%)", "ERP Code": "ERP物料代码",
+    "Material Type": "物料类型", "Process": "所属工序",
+    # —— 工序区 6 列 ——
+    "Step No.": "工序编号", "Step Name": "工序名称",
+    "Description": "工序说明", "Work Hours": "工时",
+    "Note": "备注", "Output": "产物",
+    # —— 标题/合计标签（行 2–5 + 合计行） ——
+    "Product Name": "产品名称", "Category": "产品类别",
+    "Overall Yield": "全产品出品率", "Version": "版本号",
+    "Date": "生成日期", "Approver": "审批人",
+    "Effective Date": "生效日期", "Executive Standard": "执行标准",
+    "Total": "合计", "Cost Total": "成本合计",
+    # —— 配料表 7 列 ——
+    "Measuring Unit": "计量单位", "Usage Ratio(%)": "用量占比%", "Allergen": "过敏原",
+    # —— 元件清单 14 列 ——
+    "Designator": "位号(Designator)", "Part#": "型号(Part#)", "Footprint": "封装(Footprint)",
+    "RoHS": "RoHS", "Manufacturer": "制造商", "Tolerance": "容差",
+    "Rated Power": "额定功率", "Rated Voltage": "额定电压",
+    "Alternate": "替代料", "Reflow Temp": "封装温度",
+    # —— 配方表 13 列 ——
+    "CAS No.": "CAS号", "Content(%)": "含量(%)", "GHS": "GHS标识",
+    "Purity": "纯度", "Physical State": "物态", "Flash Point": "闪点",
+    "Storage Condition": "存储条件", "Hazard Class": "危险等级",
+    # —— 面料辅料清单 8 列 ——
+    "Composition Ratio": "成分比例", "Yarn Count": "纱支",
+    "Basis Weight(g/m²)": "克重(g/m²)", "Width": "幅宽", "Color No.": "色号",
+    # —— 家具物料清单 8 列 ——
+    "Material Grade": "材质等级", "Spec Size": "尺寸规格",
+    "Surface Treatment": "表面处理", "Color/Pattern": "色号/花色",
+    # —— 机械物料清单 8 列 ——
+    "Drawing No.": "图号", "Material": "材质",
+    "Heat Treatment": "热处理", "Weight(kg)": "重量(kg)",
+    "Unit Weight(kg/pc)": "单重(kg/件)",
+    # —— 包装物料清单 8 列（Material/克重/Basis Weight 复用其上） ——
+    "Size": "尺寸", "Print Process": "印刷工艺", "Eco Label": "环保标识",
+    # —— 成本明细 8 列（No./Material Name/Material Type/Qty/Unit 复用其上） ——
+    "Unit Price": "单价", "Currency": "币种", "Total Price": "总价",
+    # —— material_type 7 行业建议值（zh→en，同值跨行业一致） ——
+    # 食品
+    "Raw": "原料", "Additive": "添加剂", "Flavoring": "香精香料",
+    # 电子
+    "Resistor": "电阻", "Capacitor": "电容", "IC": "IC", "Connector": "连接器",
+    "Diode": "二极管", "Transistor": "三极管", "Crystal": "晶振", "Other": "其他",
+    # 化工
+    "Main Agent": "主料", "Solvent": "溶剂", "Catalyst": "催化剂", "Packaging": "包材",
+    # 纺织
+    "Fabric": "面料", "Trim": "辅料", "Yarn": "纱线", "Dyeing": "印染", "Hardware": "五金",
+    # 家具
+    "Main Material": "主材", "Board": "板材", "Auxiliary": "辅材",
+    # 机械
+    "Part": "零部件", "Std Part": "标准件", "Profile": "型材",
+    "Casting": "铸件", "Welded Assy": "焊接件",
+    # 包装
+    "Carton": "纸箱", "Cushion": "缓冲", "Label": "标签", "Tape": "胶带", "Film": "薄膜",
+}
+
+# 反向映射：中文表头 / 区块标题 → 英文（渲染双语 sheet 时由中文查英文）。
+# 重复中文值（如「其他」/「材质」/「表面处理」/「色号」跨行业同值）在此仅映射一次，
+# 英文一致，无歧义丢失；「其他」→ Other，「材质」→ Material 等。
+ZH2EN = {v: k for k, v in I18N.items()}

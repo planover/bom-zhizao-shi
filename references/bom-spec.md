@@ -1,4 +1,4 @@
-# BOM 表结构与输入规范（bom-zhizao-shi · V6 / V5 / V4 / V3 / V2.1）
+# BOM 表结构与输入规范（bom-zhizao-shi · V7 / V6 / V5 / V4 / V3 / V2.1）
 
 本文件供 `scripts/generate_bom.py` 与汇总序列化阶段参考，并作为 `scripts/import_bom.py` 逆向解析的契约基线。
 
@@ -9,6 +9,8 @@
 > V4 变更摘要：新增 BOM 级可选字段 `industry`（8 值枚举，选填，默认按 `category` 推断）；新增物料级专属字段——电子行业 `designator` / `footprint` / `part_number` / `rohs`，化工行业 `cas_number` / `concentration` / `ghs_hazard`；新增行业专属派生视图——电子「三、元件清单」（8 列，含 RoHS 红黄字标记），化工「三、配方表」（8 列，含含量(%) 数字格式）；配料表触发条件从 `category=="食品"` 改为 `industry=="食品"`（含推断，行为不变）；新增软校验 V8（industry 枚举）/ W2（RoHS 未标）/ W3（CAS/GHS 未填）/ 含量(%) 列和校验（±5%）；共享常量迁入 `scripts/bom_constants.py`（EDIBLE / ALLERGEN_SET / ALLERGEN_HINTS / V4 新常量）。
 >
 > V3（V2.1）变更摘要：Excel 物料区由 7 列扩展为 **8 列（A–H）**，首列新增「序号」（按输入顺序全局连续、跨工序分组不重置）；新增 BOM 级可选字段 `approver` / `effective_date` / `standard`（Excel 行 5 单格合并拼接）；物料区末新增「合计用量」行；食品类「三、配料表」新增「用量占比%」（最大余数法保证列和恰为 100.0%）与「过敏原」两列；新增 `materials[].allergen`（仅食品配料表展示，逆向按物料名回收）；逆向解析改为按列头文本定位并兼容旧版 7/5 列。
+>
+> V7 变更摘要（增量、100% 向后兼容 V6，不新增任何阻断/软校验）：**① 双语 BOM（P0-A）**——新增 `--bilingual` 开关；`bilingual=False`（默认）时主表「BOM表」工作表与 V6 **逐字节一致**（单元值/字体/对齐/合并/列宽/行高全同）；`bilingual=True` 时在「BOM表」之后追加第二张工作表「BOM表(英)」，区块标题渲染为「中文 (English)」合并行、表头上下两行（中文上 / 英文下），`standard` 等**编码类字段不翻译**（仅翻译标签）；新增 `scripts/bom_constants.py` 的 `I18N`（英文键→中文值）与反向 `ZH2EN` 字典。**② 空白模板批量（P0-B1）**——新增 `--blank-templates` + `--out-dir` + 可选 `--industries`，按行业生成 `template_<行业>.xlsx`（默认全 8 行业），不校验。**③ 批量生成（P0-B2）**——新增 `--batch-dir <目录>` 或 `--batch f1.json,f2.json,...` + `--out-dir`，逐文件生成 `BOM_<产品名>_<日期>.xlsx`，单文件失败不中断（错误隔离），任一失败整体退出码 2，结束打印成功/失败汇总。**④ 逆向合并（P0-B3）**——`import_bom.py --in` 改为 `nargs="+"`，新增 `--merge` + `--out`；多文件顺序 `extend` materials/processes（不去重），`step_no` 跨文件冲突仅记 `merge_notes` 不重命名，`industry` 取首个非空，`merged_from`/`merge_notes` 写入顶层；单文件失败跳过并记 `merge_notes`；单 `--in` 无 `--merge` 维持 V6 行为（无合并字段）。所有新增 CLI 与 `--bilingual` 均不影响非双语路径的既有契约。
 
 ---
 
@@ -443,11 +445,17 @@
 ### CLI
 
 ```
+# 单文件 / 多文件无 --merge：按首个处理（V6 向后兼容，无合并字段）
 python3 import_bom.py --in <BOM.xlsx> [--out <data.json>]
+
+# B3 多文件合并：写入 merged_from / merge_notes
+python3 import_bom.py --in f1.xlsx f2.xlsx ... --merge --out merged.json
 ```
 
-- `--in`：必填，待解析的 BOM 表 Excel 路径。
+- `--in`：必填（`nargs="+"`），待解析的 BOM 表 Excel 路径列表（可多个）。
 - `--out`：可选，指定后将 JSON 写入该路径（utf-8、ensure_ascii=False、indent=2），stdout 打印 `OK:<json路径>`；不指定则 stdout 直接打印 `OK:<json字符串>`。
+- `--merge`：B3 开关。多文件合并为单 JSON；**必填** `--out`。合并规则见下「B3 多文件合并（V7 新增）」。
+- 多 `--in` 但未给 `--merge`：打印 `WARNING: 多输入须配合 --merge 才会合并，当前按首个文件处理` 并仅解析首个（V6 行为，不写入 `merged_from`/`merge_notes`）。
 
 ### 解析策略（关键：按列头文本定位，不硬编码列号）
 
@@ -588,3 +596,57 @@ python3 scripts/generate_bom.py --data bom_back.json --out BOM_v2.xlsx
 ```
 
 逆向导入得到的 JSON 与正向输入 Schema 一致（含 `industry` + 全量专属字段 `_SPECIAL_FIELDS`=37 唯一键：电子 10/化工 8/纺织 5/家具 4/机械 6/包装 5/成本 2），因此可直接作为 `generate_bom.py --data` 的输入，实现「导入 → 编辑/查看 → 重新生成」的完整闭环（专属字段经回收后保留）。
+
+---
+
+## V7 增量能力（generate_bom.py / import_bom.py）
+
+### 双语 BOM（P0-A · `--bilingual`）
+
+- **开关**：`generate_bom.py ... --bilingual`。默认 `False`。
+- **非双语路径（默认）**：仅生成「BOM表」工作表，单元值/样式/合并/列宽/行高与 V6 **逐字节一致**（已用单元级 diff 校验 10 类样本全同）。
+- **双语路径**：在「BOM表」之后追加第二张工作表「BOM表(英)」，使用**同一份数据**重新渲染（非工作表拷贝）：
+  - 标题行渲染为 `BOM表 (BOM Table)`；
+  - 每个区块标题渲染为合并行 `中文 (English)`（如 `一、物料信息 (I. Material Information)`）；
+  - 区块表头为上下两行：上行中文、下行英文（如 `物料名称` / `Material Name`）；
+  - `物料类型` 列在英文表中按 `ZH2EN` 显示英文（如 `主料` → `Main Material`）；
+  - **编码类字段不翻译**：`standard`（执行标准代号）、行业专属字段代码、CAS/GHS 等原样保留，仅翻译展示标签；
+  - 产品级字段标签（产品名称/产品类别/全产品出品率/版本号/生成日期/审批人/生效日期/执行标准）、合计行、成本合计行均提供中英双行标签。
+- I18N 字典：`scripts/bom_constants.py` 的 `I18N`（英文键→中文值），反向字典 `ZH2EN = {v: k for k, v in I18N.items()}`。`import_bom.py` **不依赖** I18N/ZH2EN。
+
+### 生成 CLI 一览（V7）
+
+```
+# 单文件（V6 向后兼容）
+python3 scripts/generate_bom.py --data bom.json --out BOM_2026-07-07.xlsx
+
+# 双语
+python3 scripts/generate_bom.py --data bom.json --out BOM_2026-07-07.xlsx --bilingual
+
+# B1 空白模板（默认全 8 行业；可指定 --industries 食品,电子）
+python3 scripts/generate_bom.py --blank-templates --out-dir ./templates [--industries 食品,电子] [--bilingual]
+
+# B2 批量生成（目录）
+python3 scripts/generate_bom.py --batch-dir ./inputs --out-dir ./outputs [--bilingual]
+# B2 批量生成（显式文件列表）
+python3 scripts/generate_bom.py --batch f1.json,f2.json --out-dir ./outputs [--bilingual]
+```
+
+- **优先级**：`--blank-templates` > `--batch-dir`/`--batch` > 单文件（`--data`/`--out`）。
+- **B1**：按行业生成 `template_<行业>.xlsx`，内容为空白 BOM 结构（不校验）。
+- **B2**：逐文件生成 `BOM_<产品名>_<日期>.xlsx`（产品名非法字符替换为 `_`，缺失时回退序号）；单文件失败不中断，结束打印「成功 N / 失败 M」，M>0 时整体退出码 2。
+- **单文件模式缺参**：缺 `--data` 或 `--out` 则打印 `USAGE_ERROR` 并退出码 2。
+
+### B3 多文件合并（import_bom.py · V7 新增）
+
+`import_bom.py --in f1.xlsx f2.xlsx ... --merge --out merged.json` 将多个 BOM Excel 逆向解析后合并为单 JSON：
+
+1. 逐文件 `_parse_bom_nofail`；失败捕获，记 `merge_notes`「文件 X（路径）解析失败，已跳过：<错误>」后跳过，不影响其余文件。
+2. `materials` / `processes`：按文件顺序 `extend`（**不去重、保留原序**）。
+3. `step_no` 跨文件冲突：保留原序拼接，顶层 `merge_notes` 记录冲突（如「step_no 'S01' 在文件 1/2 重复」），**不重命名**。
+4. `industry`：取首个非空文件 industry（industry 推断恒返回具体值，故即「首个文件的行业」）；`merged_from = [各文件 industry]`（仅成功解析的文件）。
+5. 产品级字段：取首个成功文件的值。
+6. 全部文件失败 → `MERGE_FAILED`（退出码 2）。
+7. 单 `--in` 无 `--merge`：维持 V6 行为，输出无 `merged_from` / `merge_notes`。
+
+合并产物可直接作为 `generate_bom.py --data` 输入（Schema 一致）。

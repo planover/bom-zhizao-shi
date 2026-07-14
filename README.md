@@ -53,6 +53,9 @@
 4. **数据校验**：用量必须为正数、物料出品率须为 0–100 的正数、工时数值须 ≥0、工序编号不可重复、产品名称/类别/出品率必填、流转链完整等，逐项即时校验。
 5. **汇总确认**：输出结构化汇总（食品类含配料表预览；电子含 14 列元件清单预览（含 W2 告警）；化工含 13 列配方表预览（含 W3 告警）；纺织含面料辅料清单预览；家具含家具物料清单预览；任一物料含 `unit_price` 时含跨行业成本明细预览），确认后生成。
 6. **生成 Excel**：调用 `scripts/generate_bom.py` 生成 .xlsx，返回文件绝对路径。
+   - **双语**：需要英文版 / 对外交付 / 双语对照时，加 `--bilingual`，在「BOM表」后追加「BOM表(英)」工作表（区块标题「中文 (English)」合并行、中英双行表头、`standard` 等编码不翻译）；不加（默认）则主表与 V6 逐字节一致。
+   - **空白模板（B1）**：`--blank-templates --out-dir <目录> [--industries 食品,电子]` 按行业生成 `template_<行业>.xlsx`（默认全 8 行业）。
+   - **批量生成（B2）**：`--batch-dir <输入目录> --out-dir <输出目录>` 或 `--batch f1.json,f2.json --out-dir <输出目录>` 逐文件生成 `BOM_<产品名>_<日期>.xlsx`，单文件失败不中断，有失败整体退出码 2。
 
 **交互示例**：
 ```
@@ -75,12 +78,16 @@ BOM智造师：已生成：/path/to/BOM_2026-07-07.xlsx
 触发(导入类关键词) → 接收Excel路径 → 逆向解析(import_bom.py) → 展示/导出JSON → [重新生成Excel / 退出]
 ```
 
-1. 用导入类关键词触发（如「把这份 BOM 表导入」），提供 .xlsx 文件路径。
+1. 用导入类关键词触发（如「把这份 BOM 表导入」），提供 .xlsx 文件路径（B3 合并可多个）。
 2. 调用逆向解析脚本（按列头文本定位，向后兼容旧版 5 列 Excel）：
    ```
+   # 单文件 / 多文件无 --merge：按首个处理（V6 向后兼容）
    python3 <skill_dir>/scripts/import_bom.py --in BOM_2026-07-07.xlsx [--out data.json]
+
+   # B3 多文件合并（必填 --out）
+   python3 <skill_dir>/scripts/import_bom.py --in f1.xlsx f2.xlsx ... --merge --out merged.json
    ```
-3. 查看结构化汇总（版本号、日期、物料条数、工序条数及关键字段）。
+3. 查看结构化汇总（版本号、日期、物料条数、工序条数及关键字段；B3 合并含 `merged_from` 与 `merge_notes`）。
 4. 提供后续选项：
    ```
    [1] 重新生成 Excel（把这份 JSON 作为 --data 传回 generate_bom.py，可先编辑）
@@ -90,6 +97,7 @@ BOM智造师：已生成：/path/to/BOM_2026-07-07.xlsx
    - 选 1：进入正向后处理，可先编辑再重新生成，实现「导入 → 编辑 → 重新生成」闭环；
    - 选 2：执行 `import_bom.py --in <xlsx> --out <data.json>`，把文件落盘；
    - 选 3：终止流程。
+   - **B3 合并**：`--in` 多个文件 + `--merge` 顺序合并为单 JSON（materials/processes 按文件 `extend` 不去重）；`step_no` 跨文件重复仅记 `merge_notes` 不重命名；`industry` 取首个非空；顶层写入 `merged_from`（各文件 industry）与 `merge_notes`（冲突/失败说明）；单文件解析失败跳过并记 `merge_notes`；全部失败 `MERGE_FAILED`（退出码 2）。单 `--in` 无 `--merge` 维持 V6 行为（无合并字段）。
 
 > 逆向导入是「重新编辑已有 BOM」的入口：导出的 JSON 可直接重新喂给正向流程。**注意**：「三、配料表/元件清单/配方表/面料辅料清单/家具物料清单」及「成本明细」均为派生区块，逆向不重建实体；仅按物料名回收专属字段（过敏原/电子10字段/化工8字段/纺织5字段/家具4字段/成本2字段）回写到物料对象，重新生成时按 `industry` 重新派生。V5 逆向对电子识别 14 列、化工识别 13 列（按列头文本定位，向后兼容旧版 8 列 Excel）。逆向输出 JSON 含 `industry` 字段（从区块标记或 category 推断）+ 全部专属字段（默认空串补全）；`total_price` 不入库（派生展示），`unit_price`/`currency` 入库（currency 缺省 人民币(CNY)）。
 
@@ -291,12 +299,30 @@ python3 <skill_dir>/scripts/import_bom.py --in BOM_2026-07-07.xlsx
 python3 <skill_dir>/scripts/import_bom.py --in BOM_2026-07-07.xlsx --out bom_back.json
 # 成功输出：OK:bom_back.json
 # 非 BOM 格式 / 标记缺失输出：PARSE_ERROR（退出码 2）
+# B3 多文件合并（必填 --out）
+python3 <skill_dir>/scripts/import_bom.py --in f1.xlsx f2.xlsx --merge --out merged.json
+# 成功输出：OK:merged.json；顶层含 merged_from / merge_notes
 ```
 
 **闭环：逆向结果重新生成 Excel**
 ```bash
 python3 <skill_dir>/scripts/import_bom.py --in BOM_2026-07-07.xlsx --out bom_back.json
 python3 <skill_dir>/scripts/generate_bom.py --data bom_back.json --out BOM_v2.xlsx
+```
+
+**V7 增量命令一览**
+```bash
+# 双语 BOM（追加「BOM表(英)」工作表，主表与 V6 逐字节一致）
+python3 <skill_dir>/scripts/generate_bom.py --data bom.json --out BOM_2026-07-07.xlsx --bilingual
+
+# B1 空白模板（默认全 8 行业；可指定 --industries）
+python3 <skill_dir>/scripts/generate_bom.py --blank-templates --out-dir ./templates
+python3 <skill_dir>/scripts/generate_bom.py --blank-templates --out-dir ./templates --industries 食品,电子 --bilingual
+
+# B2 批量生成（按目录或显式文件列表）
+python3 <skill_dir>/scripts/generate_bom.py --batch-dir ./inputs --out-dir ./outputs
+python3 <skill_dir>/scripts/generate_bom.py --batch f1.json,f2.json --out-dir ./outputs --bilingual
+# 结束打印：成功 N / 失败 M；有失败则整体退出码 2
 ```
 
 ## 11. 仓库地址

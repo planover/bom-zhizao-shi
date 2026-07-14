@@ -48,6 +48,10 @@ import subprocess
 from bom_constants import CATEGORY_TO_INDUSTRY
 
 
+class _ParseError(Exception):
+    """BOM Excel 解析失败（FILE_ERROR / PARSE_ERROR），由 parse_bom 转译为退出码 2。"""
+
+
 # V6 物料级专属字段（逆向回收后默认空串，未匹配到的保持空）
 # 唯一 JSON 键计为 37 个：V5 实际 28 个（V4(7) + 纺织(5) + 家具(4) + 电子扩列(6) +
 # 化工扩列(5) + 成本(2)，减去 color_no 与纺织共用重复计 1 = 28），V6 净增 9 个唯一键
@@ -312,9 +316,20 @@ def _recover_block_fields(ws, marker_row, field_col_map, materials):
 def parse_bom(path):
     """解析 BOM Excel 文件，返回与正向输入 JSON Schema 一致的 dict。
 
-    若缺少必要标记（一、物料信息 / 二、工艺工序），打印 PARSE_ERROR 并以
-    退出码 2 结束进程。
+    若缺少必要标记（一、物料信息 / 二、工艺工序），打印 PARSE_ERROR / FILE_ERROR
+    并以退出码 2 结束进程（向后兼容 V6）。
+    """
+    try:
+        return _parse_bom_core(path)
+    except _ParseError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(2)
 
+
+def _parse_bom_core(path):
+    """解析 BOM Excel 文件核心实现（不退出，解析失败抛 _ParseError）。
+
+    返回与正向输入 JSON Schema 一致的 dict。
     V4 增强：推断 industry + 回收电子/化工专属字段 + 物料对象补全专属字段默认空串。
     """
     from openpyxl import load_workbook
@@ -322,8 +337,7 @@ def parse_bom(path):
     try:
         wb = load_workbook(path, data_only=True)
     except Exception as e:
-        print("FILE_ERROR: 无法读取 Excel 文件：%s" % e, file=sys.stderr)
-        sys.exit(2)
+        raise _ParseError("FILE_ERROR: 无法读取 Excel 文件：%s" % e)
     ws = wb["BOM表"] if "BOM表" in wb.sheetnames else wb.active
 
     # 标题容错：非预期标题仅告警，不中断。
@@ -366,13 +380,11 @@ def parse_bom(path):
     # 定位区标记行。
     material_row = _find_marker_row(ws, "一、物料信息")
     if material_row is None:
-        print("PARSE_ERROR: 未找到物料区标记『一、物料信息』，无法解析。")
-        sys.exit(2)
+        raise _ParseError("PARSE_ERROR: 未找到物料区标记『一、物料信息』，无法解析。")
 
     process_row = _find_marker_row(ws, "二、工艺工序")
     if process_row is None:
-        print("PARSE_ERROR: 未找到工序区标记『二、工艺工序』，无法解析。")
-        sys.exit(2)
+        raise _ParseError("PARSE_ERROR: 未找到工序区标记『二、工艺工序』，无法解析。")
 
     # V4: 提前定位所有「三、」区块标记（用于工序区停止边界 + 专属字段回收）
     ingredient_row = _find_marker_row(ws, "三、配料表")
@@ -649,14 +661,108 @@ def parse_bom(path):
     }
 
 
+def _parse_bom_nofail(path):
+    """不退出变体：解析失败返回 (None, 错误信息)，用于 B3 错误隔离。
+
+    Returns:
+        (data, None) 成功；或 (None, err_msg) 失败。
+    """
+    try:
+        return _parse_bom_core(path), None
+    except _ParseError as e:
+        return None, str(e)
+    except Exception as e:  # noqa: BLE001
+        return None, "PARSE_ERROR: %s" % e
+
+
+def _merge_boms(paths, out_path):
+    """多 Excel 逆向解析后合并为单 JSON（B3）。
+
+    合并规则（最小变更）：
+        1. 逐文件 _parse_bom_nofail；失败捕获，记 merge_notes「文件 X 解析失败」，跳过。
+        2. materials/processes：按文件顺序 extend（不去重、保留原序）。
+        3. step_no 跨文件冲突：保留原序拼接，顶层 merge_notes 记录冲突
+           （如「step_no 'S01' 在文件 2/3 重复」），不重命名。
+        4. industry：取首个非空文件 industry；merged_from = [各文件 industry]。
+        5. 产品级字段：取首个成功文件的值。
+
+    Args:
+        paths: 输入 xlsx 路径列表（按 CLI 输入顺序）。
+        out_path: 合并输出 JSON 路径。
+    """
+    merged = None
+    merged_from = []
+    merge_notes = []
+    step_no_owner = {}  # step_no -> 首次出现文件序号
+
+    for idx, path in enumerate(paths, 1):
+        data, err = _parse_bom_nofail(path)
+        if data is None:
+            merge_notes.append("文件 %d（%s）解析失败，已跳过：%s" % (idx, path, err))
+            continue
+        merged_from.append(data.get("industry", ""))
+        # step_no 冲突留痕
+        for p in data.get("processes", []):
+            sn = str(p.get("step_no") or "").strip()
+            if not sn:
+                continue
+            if sn in step_no_owner and step_no_owner[sn] != idx:
+                merge_notes.append(
+                    "step_no '%s' 在文件 %d/%d 重复" % (sn, step_no_owner[sn], idx)
+                )
+            else:
+                step_no_owner[sn] = idx
+        if merged is None:
+            merged = data  # 复制首个文件全部字段作基底（含产品级字段）
+        else:
+            merged["materials"].extend(data.get("materials", []))
+            merged["processes"].extend(data.get("processes", []))
+
+    if merged is None:
+        print("MERGE_FAILED: 所有输入文件均解析失败", file=sys.stderr)
+        sys.exit(2)
+
+    # industry 取首个非空（兼容单文件 Schema，可直接回灌正向）
+    industry = next((x for x in merged_from if x), merged.get("industry", "通用"))
+    merged["industry"] = industry
+    merged["merged_from"] = merged_from
+    merged["merge_notes"] = merge_notes
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(merged, f, ensure_ascii=False, indent=2)
+    print("OK:" + out_path)
+    if merge_notes:
+        print("合并备注：")
+        for note in merge_notes:
+            print(" - " + note)
+
+
 def main():
     ensure_openpyxl()
     parser = argparse.ArgumentParser(description="从 BOM 表 Excel 逆向导入 JSON")
-    parser.add_argument("--in", dest="in_path", required=True, help="BOM 表 xlsx 文件路径")
+    parser.add_argument("--in", dest="in_path", nargs="+", required=True,
+                        help="BOM 表 xlsx 文件路径（可多个，配合 --merge 合并）")
+    parser.add_argument("--merge", action="store_true",
+                        help="B3：多文件合并为单 JSON（写入 merged_from / merge_notes）")
     parser.add_argument("--out", default=None, help="可选，导出 JSON 文件路径")
     args = parser.parse_args()
 
-    data = parse_bom(args.in_path)
+    paths = args.in_path
+
+    # —— B3 多文件合并 ——
+    if args.merge:
+        if not args.out:
+            print("USAGE_ERROR: --merge 模式需要 --out 指定合并 JSON 路径",
+                  file=sys.stderr)
+            sys.exit(2)
+        _merge_boms(paths, args.out)
+        return
+
+    # —— 单文件 / 多文件无 --merge：按首个处理（向后兼容 V6，无合并字段） ——
+    if len(paths) > 1:
+        print("WARNING: 多输入须配合 --merge 才会合并，当前按首个文件处理：%s"
+              % paths[0], file=sys.stderr)
+    data = parse_bom(paths[0])
     json_str = json.dumps(data, ensure_ascii=False, indent=2)
 
     if args.out:
